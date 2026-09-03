@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { getLanguage, isLanguage, setLanguage } from '../lib/i18n'
 import { supabase } from '../lib/supabase'
 import { todayIn } from '../lib/due'
 import * as api from '../lib/api'
@@ -79,6 +80,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => listener.subscription.unsubscribe()
   }, [])
 
+  const adoptLanguage = useCallback((loaded: Profile) => {
+    if (isLanguage(loaded.language)) {
+      setLanguage(loaded.language)
+      return
+    }
+    const local = getLanguage()
+    void supabase
+      .from('profiles')
+      .update({ language: local })
+      .eq('id', loaded.id)
+      .then(({ error: cause }) => {
+        if (cause) console.error('could not record the language preference', cause)
+      })
+  }, [])
+
+  const reload = useCallback(async () => {
+    if (!userId) return
+    setError(null)
+    try {
+      const [nextProfile, nextSpaces, nextPlants, nextPeople] = await Promise.all([
+        api.fetchProfile(userId),
+        api.fetchSpaces(),
+        api.fetchAllPlants(),
+        api.fetchPeople(),
+      ])
+      setProfile(nextProfile)
+      adoptLanguage(nextProfile)
+      setSpaces(nextSpaces)
+      setPlants(nextPlants)
+      setPeople(new Map(nextPeople.map((person) => [person.id, person])))
+      setCurrentSpaceIdState((current) => {
+        const stillValid = current && nextSpaces.some((space) => space.id === current)
+        return stillValid ? current : (nextSpaces[0]?.id ?? null)
+      })
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setLoading(false)
+    }
+  }, [userId, adoptLanguage])
+
   // The date has to be re-derived rather than captured once: the app is meant to
   // be left open on a windowsill, and a list that still says "tonight" at 2am
   // the next day would be lying.
@@ -93,30 +135,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [timezone])
 
-  const reload = useCallback(async () => {
-    if (!userId) return
-    setError(null)
-    try {
-      const [nextProfile, nextSpaces, nextPlants, nextPeople] = await Promise.all([
-        api.fetchProfile(userId),
-        api.fetchSpaces(),
-        api.fetchAllPlants(),
-        api.fetchPeople(),
-      ])
-      setProfile(nextProfile)
-      setSpaces(nextSpaces)
-      setPlants(nextPlants)
-      setPeople(new Map(nextPeople.map((person) => [person.id, person])))
-      setCurrentSpaceIdState((current) => {
-        const stillValid = current && nextSpaces.some((space) => space.id === current)
-        return stillValid ? current : (nextSpaces[0]?.id ?? null)
-      })
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
-    } finally {
-      setLoading(false)
-    }
-  }, [userId])
 
   useEffect(() => {
     if (!authReady) return
@@ -168,6 +186,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [userId, reload])
+
+
+  /**
+   * Reconciles the language on the profile with the one this device is using.
+   *
+   * A profile that already names a language wins, so signing in on a new phone
+   * brings your choice with you. A profile that names none gets whatever this
+   * device worked out, which is how the first sign-in records a preference -
+   * and it has to be recorded, because the evening notification is written on
+   * the server, long after the app was last open.
+   */
 
   const setCurrentSpaceId = useCallback((id: string) => {
     setCurrentSpaceIdState(id)

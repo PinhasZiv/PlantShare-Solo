@@ -1,15 +1,16 @@
-// כל הטקסטים של הממשק, במקום אחד.
-//
-// לא ספריית תרגום - האפליקציה בעברית בלבד - אבל ריכוז הטקסטים כאן אומר
-// שאפשר לשנות ניסוח בלי לחפש אותו בין הרכיבים, ושהניסוח נשאר עקבי.
+// המילון העברי, והצורה שכל מילון אחר חייב להתאים לה.
 //
 // הערה על ניסוח: העברית כאן נמנעת מפניות בגוף שני מוטות מין. במקום
 // "הוסף צמח" - "הוספת צמח", במקום "שמור" - "שמירה". זה גם נייטרלי וגם
 // הצורה המקובלת בממשקים בעברית.
+//
+// אין כאן `as const` בכוונה: הטיפוס Strings נגזר מהאובייקט הזה, ולו היו
+// כאן טיפוסים ליטרליים היה המילון האנגלי נדרש להכיל בדיוק את אותן
+// מחרוזות. בלי זה הוא נדרש רק לאותו מבנה, וזה מה שאנחנו רוצים לאכוף.
 
-import { days, plants as plantCount } from './format'
+import { days, plants as plantCount } from '../format'
 
-export const strings = {
+export const he = {
   appName: 'PlantShare',
 
   nav: {
@@ -46,7 +47,7 @@ export const strings = {
   tonight: {
     titleActive: 'הערב',
     titleDone: 'הכול בוצע',
-    needWater: (n: number) => `${plantCount(n)} ${n === 1 ? 'ממתין' : 'ממתינים'} להשקיה`,
+    needWater: (n: number) => `${plantCount(n, 'he')} ${n === 1 ? 'ממתין' : 'ממתינים'} להשקיה`,
     allWatered: 'כל מה שהיה להשקות היום כבר הושקה.',
     nothingDue: 'אין צמחים להשקיה היום.',
     groupLate: 'באיחור',
@@ -63,7 +64,7 @@ export const strings = {
   plant: {
     water: 'השקיתי',
     waterAria: (name: string) => `סימון ${name} כמושקה`,
-    badgeLate: (n: number) => `איחור של ${days(n)}`,
+    badgeLate: (n: number) => `איחור של ${days(n, 'he')}`,
     badgeDue: 'הערב',
     badgeDone: 'בוצע',
     wateredBy: (who: string) => `הושקה על ידי ${who}`,
@@ -104,7 +105,7 @@ export const strings = {
     empty: 'אין עדיין צמחים במרחב הזה.',
     emptyBody: 'מוסיפים צמח עם שם ועם תדירות ההשקיה שלו.',
     addFirst: 'הוספת הצמח הראשון',
-    count: (n: number) => plantCount(n),
+    count: (n: number) => plantCount(n, 'he'),
     addAria: 'הוספת צמח',
     added: (name: string) => `${name} נוסף.`,
     deleted: 'הצמח נמחק.',
@@ -185,6 +186,9 @@ export const strings = {
       unsupported: 'הדפדפן הזה לא תומך בהתראות. באנדרואיד כדאי Chrome, Edge או Firefox.',
       unconfigured: 'האפליקציה נבנתה בלי מפתח התראות, ולכן אי אפשר לשלוח אותן. ראה SETUP.md.',
     },
+    language: 'שפה',
+    languageBody:
+      'משנה את הממשק ואת נוסח ההתראה שנשלחת אליך בערב. רק בשבילך — לכל אחד יש בחירה משלו.',
     test: {
       noServer: 'לא הצלחתי להגיע לשרת. האם הפונקציה send-test הועלתה?',
       noSubscription: 'המכשיר הזה עדיין לא רשום. צריך קודם להפעיל תזכורות.',
@@ -205,4 +209,11 @@ export const strings = {
     lede: 'לבנייה הזאת אין עדיין כתובת Supabase ומפתח, ולכן אי אפשר להתחבר.',
     body: 'צריך למלא את שני הערכים בקובץ src/config.ts. כל השלבים מפורטים ב-SETUP.md.',
   },
-} as const
+}
+
+/**
+ * The shape every language has to provide. Derived from the Hebrew dictionary
+ * rather than written out by hand, so adding a string to one language makes
+ * the other fail to compile until it is translated.
+ */
+export type Strings = typeof he

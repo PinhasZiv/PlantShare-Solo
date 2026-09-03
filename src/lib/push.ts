@@ -1,4 +1,4 @@
-import { strings } from './strings'
+import { t } from './i18n'
 import { VAPID_PUBLIC_KEY, supabase } from './supabase'
 
 // Getting a browser subscribed to push is a four-step handshake, and each step
@@ -114,10 +114,10 @@ export async function disablePush(): Promise<void> {
 /** Asks the server to push one notification to this account's devices now. */
 export async function sendTestNotification(): Promise<{ ok: boolean; message: string }> {
   const { data, error } = await supabase.functions.invoke('send-test', { body: {} })
-  if (error) return { ok: false, message: strings.settings.test.noServer }
+  if (error) return { ok: false, message: t().settings.test.noServer }
   if (data?.error === 'no_subscriptions') {
-    return { ok: false, message: strings.settings.test.noSubscription }
+    return { ok: false, message: t().settings.test.noSubscription }
   }
-  if (!data?.ok) return { ok: false, message: strings.settings.test.rejected }
-  return { ok: true, message: strings.settings.test.sent(data.delivered, data.devices) }
+  if (!data?.ok) return { ok: false, message: t().settings.test.rejected }
+  return { ok: true, message: t().settings.test.sent(data.delivered, data.devices) }
 }

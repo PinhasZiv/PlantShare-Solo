@@ -183,6 +183,9 @@ code {
 .card-quiet { background: transparent; box-shadow: none; border-style: dashed; }
 
 .card > .btn { align-self: stretch; }
+/* Cards align their children to the start; controls that read as a single row
+   of choices should still span the card, like the buttons do. */
+.card > .segmented { align-self: stretch; }
 
 .row-between {
   display: flex;

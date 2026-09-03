@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { addDays } from '../lib/due'
 import { formatDate } from '../lib/format'
-import { strings } from '../lib/strings'
+import { useI18n } from '../lib/i18n'
 import type { Plant } from '../lib/types'
 
 export interface PlantDraft {
@@ -19,16 +19,19 @@ interface PlantFormProps {
   onDelete?: () => Promise<void>
 }
 
-// נפוץ מספיק כדי להצדיק לחיצה אחת; כל השאר נכנס בשדה המספרי.
-const PRESETS = [
-  { days: 1, label: strings.plantForm.presets.daily },
-  { days: 3, label: strings.plantForm.presets.threeDays },
-  { days: 7, label: strings.plantForm.presets.weekly },
-  { days: 14, label: strings.plantForm.presets.twoWeeks },
-  { days: 30, label: strings.plantForm.presets.monthly },
-]
-
 export function PlantForm({ today, existing, onCancel, onSave, onDelete }: PlantFormProps) {
+  const { t, language } = useI18n()
+
+  // נפוץ מספיק כדי להצדיק לחיצה אחת; כל השאר נכנס בשדה המספרי. התוויות
+  // תלויות בשפה, ולכן זה נבנה בכל רינדור ולא כקבוע ברמת המודול.
+  const presets = [
+    { days: 1, label: t.plantForm.presets.daily },
+    { days: 3, label: t.plantForm.presets.threeDays },
+    { days: 7, label: t.plantForm.presets.weekly },
+    { days: 14, label: t.plantForm.presets.twoWeeks },
+    { days: 30, label: t.plantForm.presets.monthly },
+  ]
+
   const [name, setName] = useState(existing?.name ?? '')
   const [periodDays, setPeriodDays] = useState(existing?.period_days ?? 7)
   // ברירת המחדל לצמח חדש היא "להשקות הערב", וזה כמעט תמיד מה שמתכוונים אליו
@@ -46,11 +49,11 @@ export function PlantForm({ today, existing, onCancel, onSave, onDelete }: Plant
   async function save(event: React.FormEvent) {
     event.preventDefault()
     if (!name.trim()) {
-      setError(strings.plantForm.errorNoName)
+      setError(t.plantForm.errorNoName)
       return
     }
     if (!Number.isInteger(periodDays) || periodDays < 1 || periodDays > 365) {
-      setError(strings.plantForm.errorPeriod)
+      setError(t.plantForm.errorPeriod)
       return
     }
 
@@ -70,26 +73,26 @@ export function PlantForm({ today, existing, onCancel, onSave, onDelete }: Plant
         className="sheet"
         onClick={(event) => event.stopPropagation()}
         onSubmit={save}
-        aria-label={existing ? strings.plantForm.titleEdit : strings.plantForm.titleNew}
+        aria-label={existing ? t.plantForm.titleEdit : t.plantForm.titleNew}
       >
-        <h2>{existing ? strings.plantForm.titleEdit : strings.plantForm.titleNew}</h2>
+        <h2>{existing ? t.plantForm.titleEdit : t.plantForm.titleNew}</h2>
 
         <label className="field">
-          <span>{strings.plantForm.name}</span>
+          <span>{t.plantForm.name}</span>
           <input
             id="plant-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder={strings.plantForm.namePlaceholder}
+            placeholder={t.plantForm.namePlaceholder}
             maxLength={80}
             autoComplete="off"
           />
         </label>
 
         <fieldset className="field">
-          <legend>{strings.plantForm.waterEvery}</legend>
+          <legend>{t.plantForm.waterEvery}</legend>
           <div className="preset-row">
-            {PRESETS.map((preset) => (
+            {presets.map((preset) => (
               <button
                 key={preset.days}
                 type="button"
@@ -107,15 +110,15 @@ export function PlantForm({ today, existing, onCancel, onSave, onDelete }: Plant
               max={365}
               value={periodDays}
               onChange={(event) => setPeriodDays(Number(event.target.value))}
-              aria-label={strings.plantForm.daysAria}
+              aria-label={t.plantForm.daysAria}
             />
-            <span>{strings.plantForm.daysUnit}</span>
+            <span>{t.plantForm.daysUnit}</span>
           </div>
         </fieldset>
 
         <label className="field">
           <span>
-            {existing ? strings.plantForm.nextWatering : strings.plantForm.firstWatering}
+            {existing ? t.plantForm.nextWatering : t.plantForm.firstWatering}
           </span>
           <input
             type="date"
@@ -123,15 +126,15 @@ export function PlantForm({ today, existing, onCancel, onSave, onDelete }: Plant
             min={addDays(today, -365)}
             onChange={(event) => setFirstDueDate(event.target.value || today)}
           />
-          <small>{formatDate(firstDueDate)}</small>
+          <small>{formatDate(firstDueDate, language)}</small>
         </label>
 
         <label className="field">
-          <span>{strings.plantForm.notes}</span>
+          <span>{t.plantForm.notes}</span>
           <input
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
-            placeholder={strings.plantForm.notesPlaceholder}
+            placeholder={t.plantForm.notesPlaceholder}
             maxLength={200}
           />
         </label>
@@ -140,14 +143,14 @@ export function PlantForm({ today, existing, onCancel, onSave, onDelete }: Plant
 
         <div className="sheet-actions">
           <button type="button" className="btn btn-ghost" onClick={onCancel}>
-            {strings.common.cancel}
+            {t.common.cancel}
           </button>
           <button type="submit" className="btn btn-primary" disabled={busy}>
             {busy
-              ? strings.common.saving
+              ? t.common.saving
               : existing
-                ? strings.common.save
-                : strings.plantForm.add}
+                ? t.common.save
+                : t.plantForm.add}
           </button>
         </div>
 
@@ -156,7 +159,7 @@ export function PlantForm({ today, existing, onCancel, onSave, onDelete }: Plant
             type="button"
             className="btn btn-danger-text"
             onClick={async () => {
-              if (!window.confirm(strings.plantForm.confirmDelete(existing?.name ?? ''))) return
+              if (!window.confirm(t.plantForm.confirmDelete(existing?.name ?? ''))) return
               setBusy(true)
               try {
                 await onDelete()
@@ -166,7 +169,7 @@ export function PlantForm({ today, existing, onCancel, onSave, onDelete }: Plant
               }
             }}
           >
-            {strings.plantForm.delete}
+            {t.plantForm.delete}
           </button>
         )}
       </form>

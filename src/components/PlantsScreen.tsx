@@ -6,12 +6,13 @@ import { PlantCard, wateredByLabel } from './PlantCard'
 import { PlantForm, type PlantDraft } from './PlantForm'
 import { PlusIcon } from './Icons'
 import { useToast } from './Toast'
-import { strings } from '../lib/strings'
+import { useI18n } from '../lib/i18n'
 import type { Plant } from '../lib/types'
 
 /** כל הצמחים במרחב הנבחר, בין אם הם צריכים משהו היום ובין אם לא. */
 export function PlantsScreen() {
   const { plants, currentSpace, today, session, people, reload, patchPlant } = useApp()
+  const { t, language } = useI18n()
   const toast = useToast()
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<Plant | null>(null)
@@ -46,7 +47,7 @@ export function PlantsScreen() {
     )
     setAdding(false)
     await reload()
-    toast.show(strings.plants.added(draft.name.trim()))
+    toast.show(t.plants.added(draft.name.trim()))
   }
 
   async function savePlant(draft: PlantDraft) {
@@ -66,7 +67,7 @@ export function PlantsScreen() {
     await api.deletePlant(editing.id)
     setEditing(null)
     await reload()
-    toast.show(strings.plants.deleted)
+    toast.show(t.plants.deleted)
   }
 
   return (
@@ -75,16 +76,16 @@ export function PlantsScreen() {
         <h2>{currentSpace.name}</h2>
         <p className="screen-subtitle">
           {spacePlants.length === 0
-            ? strings.plants.empty
-            : strings.plants.count(spacePlants.length)}
+            ? t.plants.empty
+            : t.plants.count(spacePlants.length)}
         </p>
       </header>
 
       {spacePlants.length === 0 ? (
         <div className="empty-state">
-          <p>{strings.plants.emptyBody}</p>
+          <p>{t.plants.emptyBody}</p>
           <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
-            {strings.plants.addFirst}
+            {t.plants.addFirst}
           </button>
         </div>
       ) : (
@@ -94,7 +95,7 @@ export function PlantsScreen() {
               key={plant.id}
               plant={plant}
               today={today}
-              wateredBy={wateredByLabel(plant, people, session?.user.id ?? null)}
+              wateredBy={wateredByLabel(plant, people, session?.user.id ?? null, language)}
               onOpen={() => setEditing(plant)}
             />
           ))}
@@ -105,7 +106,7 @@ export function PlantsScreen() {
         type="button"
         className="fab"
         onClick={() => setAdding(true)}
-        aria-label={strings.plants.addAria}
+        aria-label={t.plants.addAria}
       >
         <PlusIcon size={24} />
       </button>

@@ -1,23 +1,27 @@
 import { daysBetween } from './due'
+import type { Language } from './i18n/types'
 
-// עיצוב מספרים, תאריכים ושמות בעברית.
+// Numbers, dates and names, in whichever language is showing.
 //
-// לעברית יש צורת זוגי - "יומיים", לא "2 ימים" - ושמות עצם מוטים במספר.
-// ההבדל קטן אבל הוא מה שמפריד בין ממשק שנקרא כמו עברית לבין ממשק שנקרא
-// כמו תרגום מכונה, ולכן הוא נעשה כאן ולא בכל רכיב בנפרד.
+// Hebrew has a dual form - "יומיים", not "2 ימים" - and inflects nouns by
+// number. English does neither. The difference is small but it is what
+// separates an interface that reads like Hebrew from one that reads like a
+// machine translation, so it lives here rather than in each dictionary.
 
-const LOCALE = 'he-IL'
+const LOCALES: Record<Language, string> = { he: 'he-IL', en: 'en-GB' }
 
-/** "יום" / "יומיים" / "3 ימים" */
-export function days(count: number): string {
+/** "יום" / "יומיים" / "3 ימים", or "1 day" / "3 days". */
+export function days(count: number, language: Language): string {
   const n = Math.abs(count)
+  if (language === 'en') return n === 1 ? '1 day' : `${n} days`
   if (n === 1) return 'יום'
   if (n === 2) return 'יומיים'
   return `${n} ימים`
 }
 
-/** "צמח אחד" / "2 צמחים" */
-export function plants(count: number): string {
+/** "צמח אחד" / "2 צמחים", or "1 plant" / "2 plants". */
+export function plants(count: number, language: Language): string {
+  if (language === 'en') return count === 1 ? '1 plant' : `${count} plants`
   return count === 1 ? 'צמח אחד' : `${count} צמחים`
 }
 
@@ -29,26 +33,38 @@ export function initials(name: string | null, email: string | null): string {
   return (parts[0][0] + parts[1][0]).toUpperCase()
 }
 
-export function firstName(name: string | null, email: string | null): string {
-  const source = (name || email || 'מישהו').trim()
+export function firstName(
+  name: string | null,
+  email: string | null,
+  language: Language,
+): string {
+  const fallback = language === 'he' ? 'מישהו' : 'someone'
+  const source = (name || email || fallback).trim()
   return source.split(/[\s@]/)[0]
 }
 
-/** "היום" / "מחר" / "בעוד יומיים" / "לפני 3 ימים" */
-export function relativeDay(isoDate: string, today: string): string {
+/** "היום" / "בעוד יומיים", or "today" / "in 2 days". */
+export function relativeDay(isoDate: string, today: string, language: Language): string {
   const delta = daysBetween(today, isoDate)
+
+  if (language === 'en') {
+    if (delta === 0) return 'today'
+    if (delta === 1) return 'tomorrow'
+    if (delta === -1) return 'yesterday'
+    return delta > 0 ? `in ${days(delta, 'en')}` : `${days(delta, 'en')} ago`
+  }
+
   if (delta === 0) return 'היום'
   if (delta === 1) return 'מחר'
   if (delta === 2) return 'מחרתיים'
   if (delta === -1) return 'אתמול'
-  if (delta > 2) return `בעוד ${days(delta)}`
-  return `לפני ${days(delta)}`
+  return delta > 0 ? `בעוד ${days(delta, 'he')}` : `לפני ${days(delta, 'he')}`
 }
 
-/** "יום ה׳, 3 בספט׳" */
-export function formatDate(isoDate: string): string {
+/** "יום ה׳, 3 בספט׳" / "Thu, 3 Sep" */
+export function formatDate(isoDate: string, language: Language): string {
   const [y, m, d] = isoDate.split('-').map(Number)
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(LOCALE, {
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(LOCALES[language], {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -60,8 +76,17 @@ export function formatTime(hour: number, minute: number): string {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
 }
 
-/** "כל יום" / "כל יומיים" / "פעם בשבוע" / "כל 9 ימים" */
-export function describePeriod(periodDays: number): string {
+/** "פעם בשבוע" / "weekly" */
+export function describePeriod(periodDays: number, language: Language): string {
+  if (language === 'en') {
+    if (periodDays === 1) return 'every day'
+    if (periodDays === 7) return 'weekly'
+    if (periodDays === 14) return 'every 2 weeks'
+    if (periodDays === 21) return 'every 3 weeks'
+    if (periodDays === 30) return 'monthly'
+    return `every ${periodDays} days`
+  }
+
   if (periodDays === 1) return 'כל יום'
   if (periodDays === 2) return 'כל יומיים'
   if (periodDays === 7) return 'פעם בשבוע'

@@ -1,3 +1,5 @@
+import type { Language } from './i18n/types'
+
 export interface Profile {
   id: string
   email: string | null
@@ -6,6 +8,12 @@ export interface Profile {
   reminder_hour: number
   reminder_minute: number
   timezone: string
+  /**
+   * Null until the person has been on a device once. Nullable rather than
+   * defaulted so a browser-detected language is not overwritten by a server
+   * default the moment they sign in.
+   */
+  language: Language | null
 }
 
 export interface Space {

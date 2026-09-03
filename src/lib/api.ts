@@ -1,4 +1,4 @@
-import { strings } from './strings'
+import { t } from './i18n'
 import { supabase } from './supabase'
 import type { Member, Plant, Profile, Space, WateringEvent } from './types'
 
@@ -52,7 +52,7 @@ export async function joinSpace(code: string): Promise<Space> {
   if (error) {
     // מסד הנתונים זורק קוד יבש; כאן הוא הופך למשהו קריא.
     throw new Error(
-      error.message.includes('no_such_code') ? strings.errors.noSuchCode : error.message,
+      error.message.includes('no_such_code') ? t().errors.noSuchCode : error.message,
     )
   }
   return data as Space
@@ -62,7 +62,7 @@ export async function leaveSpace(spaceId: string): Promise<void> {
   const { error } = await supabase.rpc('leave_space', { p_space: spaceId })
   if (error) {
     throw new Error(
-      error.message.includes('last_owner') ? strings.errors.lastOwner : error.message,
+      error.message.includes('last_owner') ? t().errors.lastOwner : error.message,
     )
   }
 }

@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { appUrl, supabase } from '../lib/supabase'
-import { strings } from '../lib/strings'
+import { useI18n } from '../lib/i18n'
 import { LeafMark } from './Icons'
 
 export function SignIn() {
+  const { t } = useI18n()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -27,18 +28,18 @@ export function SignIn() {
     <div className="centered-page">
       <div className="hero">
         <LeafMark size={72} />
-        <h1>{strings.appName}</h1>
-        <p className="lede">{strings.signIn.tagline}</p>
+        <h1>{t.appName}</h1>
+        <p className="lede">{t.signIn.tagline}</p>
       </div>
 
       <button type="button" className="btn btn-google" onClick={signIn} disabled={busy}>
         <GoogleMark />
-        {busy ? strings.signIn.opening : strings.signIn.button}
+        {busy ? t.signIn.opening : t.signIn.button}
       </button>
 
       {error && <p className="error-text">{error}</p>}
 
-      <p className="fine-print">{strings.signIn.privacy}</p>
+      <p className="fine-print">{t.signIn.privacy}</p>
     </div>
   )
 }

@@ -9,13 +9,14 @@ import {
   sendTestNotification,
   type PushState,
 } from '../lib/push'
-import { strings } from '../lib/strings'
+import { LANGUAGE_NAMES, LANGUAGES, useI18n, type Language } from '../lib/i18n'
 import { supabase } from '../lib/supabase'
 import { useApp } from '../state/AppState'
 import { useToast } from './Toast'
 
 export function SettingsScreen() {
   const { profile, session, setProfile } = useApp()
+  const { t, language, setLanguage } = useI18n()
   const toast = useToast()
   const [pushState, setPushState] = useState<PushState>('prompt')
   const [busy, setBusy] = useState(false)
@@ -33,17 +34,34 @@ export function SettingsScreen() {
       if (enabled) {
         const next = await enablePush(session!.user.id)
         setPushState(next)
-        if (next === 'subscribed') toast.show(strings.settings.enabled)
-        if (next === 'denied') toast.show(strings.settings.blockedToast, { tone: 'error' })
+        if (next === 'subscribed') toast.show(t.settings.enabled)
+        if (next === 'denied') toast.show(t.settings.blockedToast, { tone: 'error' })
       } else {
         await disablePush()
         setPushState('prompt')
-        toast.show(strings.settings.disabled)
+        toast.show(t.settings.disabled)
       }
     } catch (cause) {
       toast.showError(cause)
     } finally {
       setBusy(false)
+    }
+  }
+
+  /**
+   * The choice is stored on the profile as well as on the device, for two
+   * reasons: it follows you to a new phone, and the reminder job needs it -
+   * that notification is composed on the server, hours after you last had the
+   * app open.
+   */
+  async function chooseLanguage(next: Language) {
+    setLanguage(next)
+    try {
+      const updated = await api.updateProfile(session!.user.id, { language: next })
+      setProfile(updated)
+    } catch (cause) {
+      // The screen has already switched; only the sync failed.
+      toast.showError(cause)
     }
   }
 
@@ -68,12 +86,31 @@ export function SettingsScreen() {
   return (
     <div className="screen">
       <header className="screen-header">
-        <h2>{strings.settings.title}</h2>
+        <h2>{t.settings.title}</h2>
       </header>
 
       <section className="card">
-        <h3>{strings.settings.reminderTime}</h3>
-        <p className="muted">{strings.settings.reminderBody}</p>
+        <h3>{t.settings.language}</h3>
+        <p className="muted">{t.settings.languageBody}</p>
+        <div className="segmented" role="group" aria-label={t.settings.language}>
+          {LANGUAGES.map((option) => (
+            <button
+              key={option}
+              type="button"
+              lang={option}
+              className={option === language ? 'segment segment-active' : 'segment'}
+              aria-pressed={option === language}
+              onClick={() => chooseLanguage(option)}
+            >
+              {LANGUAGE_NAMES[option]}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="card">
+        <h3>{t.settings.reminderTime}</h3>
+        <p className="muted">{t.settings.reminderBody}</p>
         <input
           type="time"
           className="time-input"
@@ -82,15 +119,15 @@ export function SettingsScreen() {
             const [hour, minute] = event.target.value.split(':').map(Number)
             if (Number.isFinite(hour) && Number.isFinite(minute)) void saveTime(hour, minute)
           }}
-          aria-label={strings.settings.reminderAria}
+          aria-label={t.settings.reminderAria}
         />
         <p className="muted small">
-          {savingTime ? strings.common.saving : strings.settings.timezone(profile.timezone)}
+          {savingTime ? t.common.saving : t.settings.timezone(profile.timezone)}
         </p>
       </section>
 
       <section className="card">
-        <h3>{strings.settings.notifications}</h3>
+        <h3>{t.settings.notifications}</h3>
         <PushStatus state={pushState} />
 
         {pushState === 'subscribed' ? (
@@ -104,7 +141,7 @@ export function SettingsScreen() {
                 toast.show(result.message, { tone: result.ok ? 'info' : 'error' })
               }}
             >
-              {strings.settings.sendTest}
+              {t.settings.sendTest}
             </button>
             <button
               type="button"
@@ -112,7 +149,7 @@ export function SettingsScreen() {
               disabled={busy}
               onClick={() => toggleReminders(false)}
             >
-              {strings.settings.turnOff}
+              {t.settings.turnOff}
             </button>
           </>
         ) : (
@@ -122,17 +159,17 @@ export function SettingsScreen() {
             disabled={busy || pushState === 'unsupported' || pushState === 'unconfigured'}
             onClick={() => toggleReminders(true)}
           >
-            {busy ? strings.common.working : strings.settings.turnOn}
+            {busy ? t.common.working : t.settings.turnOn}
           </button>
         )}
 
         {!isInstalled() && (
-          <p className="muted small">{strings.settings.installHint}</p>
+          <p className="muted small">{t.settings.installHint}</p>
         )}
       </section>
 
       <section className="card">
-        <h3>{strings.settings.account}</h3>
+        <h3>{t.settings.account}</h3>
         <p className="muted">{profile.email}</p>
         <button
           type="button"
@@ -141,7 +178,7 @@ export function SettingsScreen() {
             await supabase.auth.signOut()
           }}
         >
-          {strings.settings.signOut}
+          {t.settings.signOut}
         </button>
       </section>
     </div>
@@ -150,6 +187,7 @@ export function SettingsScreen() {
 
 /** אומר איזו מכל הדרכים שבהן התראות יכולות להיות כבויות היא זו שקורית כאן. */
 function PushStatus({ state }: { state: PushState }) {
+  const { t } = useI18n()
   const tone = state === 'subscribed' ? 'ok' : state === 'prompt' ? 'neutral' : 'warn'
-  return <p className={`status status-${tone}`}>{strings.settings.pushState[state]}</p>
+  return <p className={`status status-${tone}`}>{t.settings.pushState[state]}</p>
 }

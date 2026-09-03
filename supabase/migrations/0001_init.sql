@@ -55,6 +55,12 @@ create table if not exists public.profiles (
   created_at      timestamptz not null default now()
 );
 
+-- שפת הממשק. נוספת בנפרד כדי שהסקריפט יוסיף אותה גם למסד נתונים שכבר הורץ
+-- בו הסקריפט הקודם. היא nullable בכוונה: ברירת מחדל בצד השרת הייתה דורסת את
+-- השפה שהדפדפן זיהה ברגע שנכנסים.
+alter table public.profiles
+  add column if not exists language text check (language in ('he', 'en'));
+
 -- Every signed-in user gets a profile row automatically; the app never has to
 -- deal with the "signed in but no profile yet" state.
 create or replace function public.handle_new_user()

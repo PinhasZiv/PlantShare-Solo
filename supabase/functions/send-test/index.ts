@@ -8,6 +8,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { loadConfig } from '../_shared/config.ts'
+import { TEST_NOTIFICATION, isLanguage, type Language } from '../_shared/messages.ts'
 import { sendPush } from '../_shared/webpush.ts'
 
 const CORS = {
@@ -48,6 +49,16 @@ Deno.serve(async (request) => {
   const config = await loadConfig(admin)
   if (!config) return json({ error: 'not_configured' }, 500)
 
+  // The test notification is the one that proves the setup works, so it had
+  // better arrive in the language the person is looking at.
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('language')
+    .eq('id', userData.user.id)
+    .single()
+  const stored: unknown = profile?.language
+  const language: Language = isLanguage(stored) ? stored : 'he'
+
   const { data: subs, error } = await admin
     .from('push_subscriptions')
     .select('id, endpoint, p256dh, auth')
@@ -61,11 +72,10 @@ Deno.serve(async (request) => {
     const result = await sendPush(
       sub,
       {
-        title: 'PlantShare מוכן',
-        body: 'ההתראות עובדות. בדיוק כזאת תגיע בשעת התזכורת שלך.',
+        ...TEST_NOTIFICATION[language],
         tag: 'plantshare-test',
-        lang: 'he',
-        dir: 'rtl',
+        lang: language,
+        dir: language === 'he' ? 'rtl' : 'ltr',
         test: true,
       },
       config.vapid,

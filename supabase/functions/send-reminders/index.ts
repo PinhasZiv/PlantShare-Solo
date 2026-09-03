@@ -12,6 +12,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { classify, minutesOfDayIn, todayIn } from '../_shared/due.ts'
 import { loadConfig } from '../_shared/config.ts'
+import { composeReminder, isLanguage, type Language } from '../_shared/messages.ts'
 import { sendPush } from '../_shared/webpush.ts'
 
 interface Profile {
@@ -20,6 +21,7 @@ interface Profile {
   reminder_hour: number
   reminder_minute: number
   timezone: string
+  language: Language | null
 }
 
 interface Plant {
@@ -43,54 +45,11 @@ interface Subscription {
 // How long after someone's chosen time we will still deliver. Wide enough to
 // absorb cron jitter and a cold start; the once-per-day log stops it repeating.
 const WINDOW_MINUTES = Number(Deno.env.get('REMINDER_WINDOW_MINUTES') ?? '60')
-const MAX_NAMES_IN_BODY = 4
-
 const admin = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
   { auth: { persistSession: false } },
 )
-
-// The notification is the only part of the app a person sees without opening
-// it, so it gets the same Hebrew as the interface - including the dual form,
-// which is what separates "יומיים" from a machine-translated "2 ימים".
-function days(count: number): string {
-  const n = Math.abs(count)
-  if (n === 1) return 'יום'
-  if (n === 2) return 'יומיים'
-  return `${n} ימים`
-}
-
-function plants(count: number): string {
-  return count === 1 ? 'צמח אחד' : `${count} צמחים`
-}
-
-/** Turns a person's overdue list into the two lines of a notification. */
-function composeMessage(
-  duePlants: { plant: Plant; daysLate: number }[],
-  spaceNames: Map<string, string>,
-  showSpaceNames: boolean,
-): { title: string; body: string } {
-  const worstLate = Math.max(...duePlants.map((entry) => entry.daysLate))
-  const count = duePlants.length
-
-  const title =
-    worstLate > 0
-      ? `איחור של ${days(worstLate)} · ${plants(count)}`
-      : `הגיע הזמן להשקות · ${plants(count)}`
-
-  const described = duePlants.slice(0, MAX_NAMES_IN_BODY).map(({ plant, daysLate }) => {
-    const where = showSpaceNames ? `${spaceNames.get(plant.space_id) ?? '?'}: ` : ''
-    const lateness = daysLate > 0 ? ` (${days(daysLate)} איחור)` : ''
-    return `${where}${plant.name}${lateness}`
-  })
-
-  const remaining = count - described.length
-  const body =
-    remaining > 0 ? `${described.join(', ')} ועוד ${remaining}` : described.join(', ')
-
-  return { title, body }
-}
 
 Deno.serve(async (request) => {
   const config = await loadConfig(admin)
@@ -118,7 +77,9 @@ Deno.serve(async (request) => {
   const now = new Date()
 
   const [profiles, subscriptions, memberships, plants, spaces] = await Promise.all([
-    admin.from('profiles').select('id, display_name, reminder_hour, reminder_minute, timezone'),
+    admin
+      .from('profiles')
+      .select('id, display_name, reminder_hour, reminder_minute, timezone, language'),
     admin.from('push_subscriptions').select('id, user_id, endpoint, p256dh, auth, failure_count'),
     admin.from('space_members').select('space_id, user_id'),
     admin
@@ -209,12 +170,25 @@ Deno.serve(async (request) => {
 
     if (!duePlants.length) continue // nothing due; the log entry stops a re-check
 
-    const { title, body } = composeMessage(duePlants, spaceNames, userSpaces.length > 1)
+    // Falls back to Hebrew only if the profile somehow has no language, which
+    // the app records on first sign-in.
+    const language: Language = isLanguage(profile.language) ? profile.language : 'he'
+    const showSpaceNames = userSpaces.length > 1
+
+    const { title, body } = composeReminder(
+      duePlants.map(({ plant, daysLate }) => ({
+        name: plant.name,
+        spaceName: showSpaceNames ? (spaceNames.get(plant.space_id) ?? '?') : undefined,
+        daysLate,
+      })),
+      language,
+    )
+
     const payload = {
       title,
       body,
-      lang: 'he',
-      dir: 'rtl',
+      lang: language,
+      dir: language === 'he' ? 'rtl' : 'ltr',
       // One tag per day means a re-delivery replaces the old notification in
       // the tray rather than stacking a second copy.
       tag: `plantshare-${localDate}`,
