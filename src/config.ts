@@ -9,10 +9,10 @@
 // ============================================================================
 
 /** Project URL, למשל https://abcdefghijklmnop.supabase.co */
-export const SUPABASE_URL = 'PASTE_YOUR_SUPABASE_URL_HERE'
+export const SUPABASE_URL = 'https://qskcwqknqwswqfnbmbxf.supabase.co/rest/v1/'
 
 /** המפתח הציבורי (anon / publishable), מתחיל ב-eyJ או ב-sb_publishable_ */
-export const SUPABASE_ANON_KEY = 'PASTE_YOUR_SUPABASE_ANON_KEY_HERE'
+export const SUPABASE_ANON_KEY = 'sb_publishable_UasoX0Oftpo4lsUrOxY4ZA_o8yYMxwy'
 
 // ----------------------------------------------------------------------------
 // מכאן והלאה כבר מוגדר. אין צורך לגעת.
