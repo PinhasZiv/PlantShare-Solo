@@ -7,18 +7,13 @@
 // right now, and reports exactly what the push service said.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
-import { sendPush, type VapidKeys } from '../_shared/webpush.ts'
+import { loadConfig } from '../_shared/config.ts'
+import { sendPush } from '../_shared/webpush.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
-
-const vapid: VapidKeys = {
-  publicKey: Deno.env.get('VAPID_PUBLIC_KEY') ?? '',
-  privateKey: Deno.env.get('VAPID_PRIVATE_KEY') ?? '',
-  subject: Deno.env.get('VAPID_SUBJECT') ?? 'mailto:plantshare@example.com',
 }
 
 function json(body: unknown, status = 200): Response {
@@ -50,6 +45,9 @@ Deno.serve(async (request) => {
     { auth: { persistSession: false } },
   )
 
+  const config = await loadConfig(admin)
+  if (!config) return json({ error: 'not_configured' }, 500)
+
   const { data: subs, error } = await admin
     .from('push_subscriptions')
     .select('id, endpoint, p256dh, auth')
@@ -63,12 +61,14 @@ Deno.serve(async (request) => {
     const result = await sendPush(
       sub,
       {
-        title: 'PlantShare is set up',
-        body: 'Notifications work. You will get one like this at your reminder time.',
+        title: 'PlantShare מוכן',
+        body: 'ההתראות עובדות. בדיוק כזאת תגיע בשעת התזכורת שלך.',
         tag: 'plantshare-test',
+        lang: 'he',
+        dir: 'rtl',
         test: true,
       },
-      vapid,
+      config.vapid,
     )
     if (!result.ok && result.gone) {
       await admin.from('push_subscriptions').delete().eq('id', sub.id)

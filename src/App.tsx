@@ -8,15 +8,16 @@ import { TonightScreen } from './components/TonightScreen'
 import { PlantsScreen } from './components/PlantsScreen'
 import { SpaceScreen, SpaceSetup } from './components/SpaceScreen'
 import { SettingsScreen } from './components/SettingsScreen'
+import { strings } from './lib/strings'
 import { GearIcon, LeafMark, ListIcon, PeopleIcon, TonightIcon } from './components/Icons'
 
 type Tab = 'tonight' | 'plants' | 'space' | 'settings'
 
 const TABS: { id: Tab; label: string; icon: (props: { size?: number }) => JSX.Element }[] = [
-  { id: 'tonight', label: 'Tonight', icon: TonightIcon },
-  { id: 'plants', label: 'Plants', icon: ListIcon },
-  { id: 'space', label: 'Space', icon: PeopleIcon },
-  { id: 'settings', label: 'Settings', icon: GearIcon },
+  { id: 'tonight', label: strings.nav.tonight, icon: TonightIcon },
+  { id: 'plants', label: strings.nav.plants, icon: ListIcon },
+  { id: 'space', label: strings.nav.space, icon: PeopleIcon },
+  { id: 'settings', label: strings.nav.settings, icon: GearIcon },
 ]
 
 export default function App() {
@@ -43,7 +44,7 @@ function Shell() {
     return (
       <div className="centered-page">
         <LeafMark size={48} />
-        <p className="muted">Loading...</p>
+        <p className="muted">{strings.common.loading}</p>
       </div>
     )
   }
@@ -53,26 +54,23 @@ function Shell() {
   if (error) {
     return (
       <div className="centered-page">
-        <h2>Something went wrong</h2>
+        <h2>{strings.common.somethingWrong}</h2>
         <p className="error-text">{error}</p>
         <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>
-          Try again
+          {strings.common.tryAgain}
         </button>
       </div>
     )
   }
 
-  // A signed-in person with no space cannot do anything useful yet, so the
-  // create-or-join sheet is the whole screen rather than a dismissable extra.
+  // מי שנכנס ואין לו מרחב לא יכול לעשות שום דבר מועיל, ולכן חלונית היצירה
+  // או ההצטרפות היא כל המסך ולא תוספת שאפשר לסגור.
   if (spaces.length === 0) {
     return (
       <div className="centered-page">
         <LeafMark size={56} />
-        <h1>Almost there</h1>
-        <p className="lede">
-          Plants live in a shared space. Create one for your home, or join the one
-          someone already made.
-        </p>
+        <h1>{strings.onboarding.title}</h1>
+        <p className="lede">{strings.onboarding.lede}</p>
         <SpaceSetup onDone={() => setTab('plants')} />
       </div>
     )
@@ -83,14 +81,14 @@ function Shell() {
       <header className="app-bar">
         <div className="app-title">
           <LeafMark size={26} />
-          <span>PlantShare</span>
+          <span>{strings.appName}</span>
         </div>
         {spaces.length > 1 && (tab === 'plants' || tab === 'space') && (
           <select
             className="space-select"
             value={currentSpace?.id ?? ''}
             onChange={(event) => setCurrentSpaceId(event.target.value)}
-            aria-label="Current space"
+            aria-label={strings.space.switchAria}
           >
             {spaces.map((space) => (
               <option key={space.id} value={space.id}>
@@ -126,20 +124,14 @@ function Shell() {
   )
 }
 
-/** Shown when the build has no Supabase details - the first-deploy state. */
+/** מוצג כשלבנייה אין פרטי Supabase - המצב של פריסה ראשונה. */
 function SetupNeeded() {
   return (
     <div className="centered-page">
       <LeafMark size={56} />
-      <h1>PlantShare needs configuring</h1>
-      <p className="lede">
-        This build has no Supabase URL or key, so it cannot sign anyone in.
-      </p>
-      <p className="muted">
-        Add <code>VITE_SUPABASE_URL</code>, <code>VITE_SUPABASE_ANON_KEY</code> and{' '}
-        <code>VITE_VAPID_PUBLIC_KEY</code> as repository variables, then re-run the
-        deploy. The steps are in <code>SETUP.md</code>.
-      </p>
+      <h1>{strings.setup.title}</h1>
+      <p className="lede">{strings.setup.lede}</p>
+      <p className="muted">{strings.setup.body}</p>
     </div>
   )
 }

@@ -6,9 +6,10 @@ import { PlantCard, wateredByLabel } from './PlantCard'
 import { PlantForm, type PlantDraft } from './PlantForm'
 import { PlusIcon } from './Icons'
 import { useToast } from './Toast'
+import { strings } from '../lib/strings'
 import type { Plant } from '../lib/types'
 
-/** Every plant in the selected space, whether or not it needs anything today. */
+/** כל הצמחים במרחב הנבחר, בין אם הם צריכים משהו היום ובין אם לא. */
 export function PlantsScreen() {
   const { plants, currentSpace, today, session, people, reload, patchPlant } = useApp()
   const toast = useToast()
@@ -20,7 +21,7 @@ export function PlantsScreen() {
       plants
         .filter((plant) => plant.space_id === currentSpace?.id)
         .sort((a, b) => {
-          // Anything needing attention floats up; the rest by next due date.
+          // כל מה שדורש תשומת לב עולה למעלה; השאר לפי תאריך היעד הבא.
           const aActive = classify(a, today).status !== 'upcoming'
           const bActive = classify(b, today).status !== 'upcoming'
           if (aActive !== bActive) return aActive ? -1 : 1
@@ -45,7 +46,7 @@ export function PlantsScreen() {
     )
     setAdding(false)
     await reload()
-    toast.show(`${draft.name.trim()} added.`)
+    toast.show(strings.plants.added(draft.name.trim()))
   }
 
   async function savePlant(draft: PlantDraft) {
@@ -65,7 +66,7 @@ export function PlantsScreen() {
     await api.deletePlant(editing.id)
     setEditing(null)
     await reload()
-    toast.show('Plant deleted.')
+    toast.show(strings.plants.deleted)
   }
 
   return (
@@ -74,16 +75,16 @@ export function PlantsScreen() {
         <h2>{currentSpace.name}</h2>
         <p className="screen-subtitle">
           {spacePlants.length === 0
-            ? 'No plants in this space yet.'
-            : `${spacePlants.length} ${spacePlants.length === 1 ? 'plant' : 'plants'}`}
+            ? strings.plants.empty
+            : strings.plants.count(spacePlants.length)}
         </p>
       </header>
 
       {spacePlants.length === 0 ? (
         <div className="empty-state">
-          <p>Add a plant with its name and how often it needs water.</p>
+          <p>{strings.plants.emptyBody}</p>
           <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
-            Add the first plant
+            {strings.plants.addFirst}
           </button>
         </div>
       ) : (
@@ -93,7 +94,7 @@ export function PlantsScreen() {
               key={plant.id}
               plant={plant}
               today={today}
-              wateredByName={wateredByLabel(plant, people, session?.user.id ?? null)}
+              wateredBy={wateredByLabel(plant, people, session?.user.id ?? null)}
               onOpen={() => setEditing(plant)}
             />
           ))}
@@ -104,7 +105,7 @@ export function PlantsScreen() {
         type="button"
         className="fab"
         onClick={() => setAdding(true)}
-        aria-label="Add a plant"
+        aria-label={strings.plants.addAria}
       >
         <PlusIcon size={24} />
       </button>

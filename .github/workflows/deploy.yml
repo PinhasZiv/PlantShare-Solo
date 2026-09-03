@@ -47,12 +47,12 @@ jobs:
           # GitHub Pages serves a project site from /<repo>/, so the bundle has
           # to be built for that sub-path.
           VITE_BASE: /${{ github.event.repository.name }}/
-          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
-          VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
         run: |
-          if [ -z "$VITE_SUPABASE_URL" ]; then
-            echo "::warning::VITE_SUPABASE_URL is not set. The deployed app will show the setup screen. See SETUP.md."
+          # The Supabase details live in src/config.ts rather than in build
+          # secrets, so that filling them in is one edit in the web editor.
+          # Both values are public by design - see the comment in that file.
+          if grep -q "PASTE_YOUR_SUPABASE" src/config.ts; then
+            echo "::warning::src/config.ts still has its placeholders, so the app will show the setup screen. See SETUP.md step 4."
           fi
           npm run build
 

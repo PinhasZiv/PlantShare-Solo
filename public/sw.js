@@ -74,9 +74,13 @@ self.addEventListener('push', (event) => {
     payload = { title: 'PlantShare', body: event.data ? event.data.text() : '' }
   }
 
-  const title = payload.title || 'Time to water'
+  const title = payload.title || 'הגיע הזמן להשקות'
   const options = {
     body: payload.body || '',
+    // The interface is Hebrew, so the notification is laid out right to left
+    // too - otherwise the tray renders the punctuation on the wrong side.
+    lang: payload.lang || 'he',
+    dir: payload.dir || 'rtl',
     // A stable tag replaces yesterday's notification instead of stacking.
     tag: payload.tag || 'plantshare',
     renotify: true,
@@ -90,7 +94,7 @@ self.addEventListener('push', (event) => {
       spaceId: payload.spaceId || null,
       url: payload.spaceId ? `${SCOPE_PATH}?space=${payload.spaceId}` : SCOPE_PATH,
     },
-    actions: [{ action: 'open', title: 'Open list' }],
+    actions: [{ action: 'open', title: 'פתיחת הרשימה' }],
   }
 
   event.waitUntil(self.registration.showNotification(title, options))

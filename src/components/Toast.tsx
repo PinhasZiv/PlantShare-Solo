@@ -29,8 +29,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     window.clearTimeout(timer.current)
     const id = Date.now()
     setToast({ id, text, tone: options?.tone ?? 'info', action: options?.action })
-    // An undo that vanishes while you are reaching for it is worse than none,
-    // so the window is generous.
+    // ביטול שנעלם בזמן שמושיטים אליו יד גרוע יותר מלא להציע ביטול בכלל,
+    // ולכן החלון נדיב.
     timer.current = window.setTimeout(() => setToast((current) => (current?.id === id ? null : current)), VISIBLE_MS)
   }, [])
 

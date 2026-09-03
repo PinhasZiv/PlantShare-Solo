@@ -1,3 +1,4 @@
+import { strings } from './strings'
 import { supabase } from './supabase'
 import type { Member, Plant, Profile, Space, WateringEvent } from './types'
 
@@ -49,11 +50,9 @@ export async function joinSpace(code: string): Promise<Space> {
     .rpc('join_space_by_code', { p_code: code.trim().toUpperCase() })
     .single()
   if (error) {
-    // The database raises a bare code; turn it into something readable.
+    // מסד הנתונים זורק קוד יבש; כאן הוא הופך למשהו קריא.
     throw new Error(
-      error.message.includes('no_such_code')
-        ? 'No space with that code. Check the letters and try again.'
-        : error.message,
+      error.message.includes('no_such_code') ? strings.errors.noSuchCode : error.message,
     )
   }
   return data as Space
@@ -63,9 +62,7 @@ export async function leaveSpace(spaceId: string): Promise<void> {
   const { error } = await supabase.rpc('leave_space', { p_space: spaceId })
   if (error) {
     throw new Error(
-      error.message.includes('last_owner')
-        ? 'You are the only owner. Make someone else an owner first, or delete the space.'
-        : error.message,
+      error.message.includes('last_owner') ? strings.errors.lastOwner : error.message,
     )
   }
 }

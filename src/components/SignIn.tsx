@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { appUrl, supabase } from '../lib/supabase'
+import { strings } from '../lib/strings'
 import { LeafMark } from './Icons'
 
 export function SignIn() {
@@ -26,24 +27,18 @@ export function SignIn() {
     <div className="centered-page">
       <div className="hero">
         <LeafMark size={72} />
-        <h1>PlantShare</h1>
-        <p className="lede">
-          A shared watering list for the plants in your home. One person waters,
-          everyone else sees it was done.
-        </p>
+        <h1>{strings.appName}</h1>
+        <p className="lede">{strings.signIn.tagline}</p>
       </div>
 
       <button type="button" className="btn btn-google" onClick={signIn} disabled={busy}>
         <GoogleMark />
-        {busy ? 'Opening Google...' : 'Continue with Google'}
+        {busy ? strings.signIn.opening : strings.signIn.button}
       </button>
 
       {error && <p className="error-text">{error}</p>}
 
-      <p className="fine-print">
-        Your Google account is used only to sign you in and to show your name to
-        the people you share a space with.
-      </p>
+      <p className="fine-print">{strings.signIn.privacy}</p>
     </div>
   )
 }

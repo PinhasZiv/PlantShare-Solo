@@ -1,7 +1,12 @@
 /* PlantShare styles.
  *
  * Built for a phone held one-handed in the evening: large tap targets, one
- * column, and a colour system that works in a dark room without glare. */
+ * column, and a colour system that works in a dark room without glare.
+ *
+ * The interface is Hebrew and the document is dir="rtl", so every directional
+ * rule here uses logical properties (inline-start / inline-end) rather than
+ * left and right. That way the layout mirrors itself correctly, and a plant
+ * named in English inside a Hebrew list still reads the right way round. */
 
 :root {
   --accent: #16794a;
@@ -52,7 +57,8 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans Hebrew',
+    'Arial Hebrew', Arial, sans-serif;
   font-size: 16px;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
@@ -105,6 +111,7 @@ code {
   gap: 8px;
   font-weight: 650;
   letter-spacing: -0.01em;
+  direction: ltr;
 }
 
 .app-body {
@@ -190,9 +197,8 @@ code {
 .plant-group { margin-bottom: 22px; }
 
 .group-title {
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  font-size: 0.82rem;
+  font-weight: 700;
   color: var(--text-muted);
   margin-bottom: 8px;
 }
@@ -211,13 +217,13 @@ code {
   overflow: hidden;
 }
 
-.plant-late { border-left: 4px solid var(--late); }
-.plant-due { border-left: 4px solid var(--accent); }
+.plant-late { border-inline-start: 4px solid var(--late); }
+.plant-due { border-inline-start: 4px solid var(--accent); }
 .plant-watered_today { opacity: 0.62; }
 
 .plant-main {
   flex: 1;
-  text-align: left;
+  text-align: start;
   background: none;
   border: 0;
   padding: 14px;
@@ -240,22 +246,35 @@ code {
   white-space: nowrap;
 }
 
+/* A plant may be called "בזיליקום" or "Monstera". plaintext lets each name
+   pick its own direction from its first strong character, so neither ends up
+   reversed or with its punctuation on the wrong side. */
+.plant-name {
+  unicode-bidi: plaintext;
+  text-align: start;
+}
+
 .plant-watered_today .plant-headline h3 { text-decoration: line-through; }
 
 .plant-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 10px;
+  gap: 2px 6px;
   margin-top: 5px;
   color: var(--text-muted);
   font-size: 0.86rem;
 }
 
+/* Without a mark between them the facts run into one another in Hebrew, where
+   there are no capitals to signal where the next one starts. */
+.plant-meta > * + *::before {
+  content: '· ';
+  opacity: 0.55;
+}
+
 .badge {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 650;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   padding: 3px 8px;
   border-radius: 999px;
   white-space: nowrap;
@@ -288,7 +307,7 @@ code {
   min-width: 82px;
   padding: 10px;
   border: 0;
-  border-left: 1px solid var(--border);
+  border-inline-start: 1px solid var(--border);
   background: var(--accent-soft);
   color: var(--accent-strong);
   font-size: 0.78rem;
@@ -336,7 +355,8 @@ code {
 
 .fab {
   position: fixed;
-  right: max(16px, calc(50% - 264px));
+  /* Mirrors to the left of the screen under RTL, where the thumb is. */
+  inset-inline-end: max(16px, calc(50% - 264px));
   bottom: calc(78px + env(safe-area-inset-bottom));
   width: 56px;
   height: 56px;
@@ -477,13 +497,15 @@ input:focus-visible, select:focus-visible, button:focus-visible {
 .preset-active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
 .code-input {
+  /* Invite codes are Latin letters and digits: always left to right. */
+  direction: ltr;
   font-size: 1.4rem;
   letter-spacing: 0.28em;
   text-align: center;
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
-.time-input { max-width: 160px; font-size: 1.25rem; }
+.time-input { max-width: 160px; font-size: 1.25rem; direction: ltr; }
 
 .segmented {
   display: flex;
@@ -526,6 +548,7 @@ input:focus-visible, select:focus-visible, button:focus-visible {
 
 .member-name {
   flex: 1;
+  unicode-bidi: plaintext;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -556,7 +579,7 @@ input:focus-visible, select:focus-visible, button:focus-visible {
 
 .space-row {
   width: 100%;
-  text-align: left;
+  text-align: start;
   padding: 11px 13px;
   border-radius: 10px;
   border: 1px solid var(--border);
@@ -568,6 +591,7 @@ input:focus-visible, select:focus-visible, button:focus-visible {
 
 .invite-code {
   align-self: stretch;
+  direction: ltr;
   text-align: center;
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
   font-size: 1.9rem;
@@ -621,13 +645,11 @@ input:focus-visible, select:focus-visible, button:focus-visible {
 .toast-error { background: #5c2418; }
 
 .toast-action {
-  margin-left: auto;
+  margin-inline-start: auto;
   background: none;
   border: 0;
   color: #7fe0ae;
   font-weight: 700;
   padding: 4px 2px;
-  text-transform: uppercase;
-  font-size: 0.82rem;
-  letter-spacing: 0.04em;
+  font-size: 0.86rem;
 }

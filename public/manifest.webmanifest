@@ -1,7 +1,9 @@
 {
-  "name": "PlantShare",
+  "name": "PlantShare — השקיה משותפת",
   "short_name": "PlantShare",
-  "description": "A shared watering list for the plants in your home.",
+  "description": "רשימת השקיה משותפת לצמחים שבבית.",
+  "lang": "he",
+  "dir": "rtl",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

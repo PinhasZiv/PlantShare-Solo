@@ -3,9 +3,10 @@ import * as api from '../lib/api'
 import { initials } from '../lib/format'
 import { useApp } from '../state/AppState'
 import { useToast } from './Toast'
+import { strings } from '../lib/strings'
 import type { Member } from '../lib/types'
 
-/** Who is in this space, how to invite someone, and how to get out. */
+/** מי נמצא במרחב, איך מזמינים עוד מישהו, ואיך יוצאים ממנו. */
 export function SpaceScreen() {
   const { currentSpace, spaces, session, reload, setCurrentSpaceId } = useApp()
   const toast = useToast()
@@ -35,22 +36,26 @@ export function SpaceScreen() {
   )
 
   async function share() {
-    const message = `Join our plant watering list "${currentSpace!.name}" on PlantShare.\n\nOpen ${window.location.origin}${import.meta.env.BASE_URL} and enter the code: ${currentSpace!.invite_code}`
-    // The Web Share sheet is the natural route on a phone; the clipboard is the
-    // fallback everywhere else.
+    const message = strings.space.shareMessage(
+      currentSpace!.name,
+      `${window.location.origin}${import.meta.env.BASE_URL}`,
+      currentSpace!.invite_code,
+    )
+    // חלונית השיתוף של המערכת היא הדרך הטבעית בטלפון; הלוח הוא הגיבוי בכל
+    // מקום אחר.
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'PlantShare invite', text: message })
+        await navigator.share({ title: strings.space.shareTitle, text: message })
         return
       } catch {
-        // Dismissed the share sheet; fall through to copying.
+        // סגרו את חלונית השיתוף; ממשיכים להעתקה.
       }
     }
     try {
       await navigator.clipboard.writeText(message)
-      toast.show('Invite copied.')
+      toast.show(strings.space.copied)
     } catch {
-      toast.show(`Invite code: ${currentSpace!.invite_code}`)
+      toast.show(strings.space.codeIs(currentSpace!.invite_code))
     }
   }
 
@@ -65,27 +70,22 @@ export function SpaceScreen() {
   }
 
   async function leave() {
-    if (!window.confirm(`Leave "${currentSpace!.name}"? Its plants stay with the other members.`)) return
+    if (!window.confirm(strings.space.confirmLeave(currentSpace!.name))) return
     try {
       await api.leaveSpace(currentSpace!.id)
       await reload()
-      toast.show('You left the space.')
+      toast.show(strings.space.left)
     } catch (cause) {
       toast.showError(cause)
     }
   }
 
   async function removeSpace() {
-    if (
-      !window.confirm(
-        `Delete "${currentSpace!.name}" for everyone? All its plants and history are removed.`,
-      )
-    )
-      return
+    if (!window.confirm(strings.space.confirmRemove(currentSpace!.name))) return
     try {
       await api.deleteSpace(currentSpace!.id)
       await reload()
-      toast.show('Space deleted.')
+      toast.show(strings.space.removed)
     } catch (cause) {
       toast.showError(cause)
     }
@@ -94,8 +94,8 @@ export function SpaceScreen() {
   return (
     <div className="screen">
       <header className="screen-header">
-        <h2>Space</h2>
-        <p className="screen-subtitle">Everyone here shares the same watering list.</p>
+        <h2>{strings.space.title}</h2>
+        <p className="screen-subtitle">{strings.space.subtitle}</p>
       </header>
 
       <section className="card">
@@ -105,13 +105,17 @@ export function SpaceScreen() {
               value={draftName}
               onChange={(event) => setDraftName(event.target.value)}
               maxLength={60}
-              aria-label="Space name"
+              aria-label={strings.space.nameAria}
             />
             <button type="button" className="btn btn-primary btn-small" onClick={rename}>
-              Save
+              {strings.common.save}
             </button>
-            <button type="button" className="btn btn-ghost btn-small" onClick={() => setRenaming(false)}>
-              Cancel
+            <button
+              type="button"
+              className="btn btn-ghost btn-small"
+              onClick={() => setRenaming(false)}
+            >
+              {strings.common.cancel}
             </button>
           </div>
         ) : (
@@ -126,7 +130,7 @@ export function SpaceScreen() {
                   setRenaming(true)
                 }}
               >
-                Rename
+                {strings.space.rename}
               </button>
             )}
           </div>
@@ -134,20 +138,18 @@ export function SpaceScreen() {
       </section>
 
       <section className="card">
-        <h3>Invite someone</h3>
-        <p className="muted">
-          They open the app, sign in with Google, and enter this code.
-        </p>
-        <div className="invite-code" aria-label="Invite code">
+        <h3>{strings.space.inviteTitle}</h3>
+        <p className="muted">{strings.space.inviteBody}</p>
+        <div className="invite-code" aria-label={strings.space.inviteCodeAria}>
           {currentSpace.invite_code}
         </div>
         <button type="button" className="btn btn-primary" onClick={share}>
-          Share invite
+          {strings.space.share}
         </button>
       </section>
 
       <section className="card">
-        <h3>Members ({members.length})</h3>
+        <h3>{strings.space.members(members.length)}</h3>
         <ul className="member-list">
           {members.map((member) => (
             <li key={member.user_id}>
@@ -159,17 +161,19 @@ export function SpaceScreen() {
                 </span>
               )}
               <span className="member-name">
-                {member.profile?.display_name || member.profile?.email || 'Member'}
-                {member.user_id === session?.user.id && <span className="chip">you</span>}
+                {member.profile?.display_name || member.profile?.email || strings.space.memberFallback}
+                {member.user_id === session?.user.id && (
+                  <span className="chip">{strings.space.you}</span>
+                )}
               </span>
-              {member.role === 'owner' && <span className="chip">owner</span>}
+              {member.role === 'owner' && <span className="chip">{strings.space.owner}</span>}
             </li>
           ))}
         </ul>
       </section>
 
       <section className="card">
-        <h3>Your spaces</h3>
+        <h3>{strings.space.yourSpaces}</h3>
         <ul className="space-list">
           {spaces.map((space) => (
             <li key={space.id}>
@@ -184,17 +188,17 @@ export function SpaceScreen() {
           ))}
         </ul>
         <button type="button" className="btn btn-ghost" onClick={() => setShowJoin(true)}>
-          Create or join another space
+          {strings.space.createOrJoin}
         </button>
       </section>
 
       <section className="card card-quiet">
         <button type="button" className="btn btn-danger-text" onClick={leave}>
-          Leave this space
+          {strings.space.leave}
         </button>
         {isOwner && (
           <button type="button" className="btn btn-danger-text" onClick={removeSpace}>
-            Delete this space for everyone
+            {strings.space.remove}
           </button>
         )}
       </section>
@@ -205,8 +209,8 @@ export function SpaceScreen() {
 }
 
 /**
- * Create-or-join, used both for the very first space (where there is nothing to
- * cancel back to) and later from the Space tab.
+ * יצירה או הצטרפות. משמש גם למרחב הראשון - שם אין לאן לבטל - וגם אחר כך
+ * מלשונית המרחב.
  */
 export function SpaceSetup({
   onDone,
@@ -229,10 +233,16 @@ export function SpaceSetup({
     setError(null)
     try {
       const space =
-        mode === 'create' ? await api.createSpace(name.trim() || 'Home') : await api.joinSpace(code)
+        mode === 'create'
+          ? await api.createSpace(name.trim() || strings.spaceSetup.defaultName)
+          : await api.joinSpace(code)
       setCurrentSpaceId(space.id)
       await reload()
-      toast.show(mode === 'create' ? `"${space.name}" created.` : `Joined "${space.name}".`)
+      toast.show(
+        mode === 'create'
+          ? strings.spaceSetup.created(space.name)
+          : strings.spaceSetup.joined(space.name),
+      )
       onDone()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
@@ -243,7 +253,9 @@ export function SpaceSetup({
   return (
     <div className="sheet-backdrop" onClick={allowCancel ? onDone : undefined} role="presentation">
       <form className="sheet" onClick={(event) => event.stopPropagation()} onSubmit={submit}>
-        <h2>{mode === 'create' ? 'New space' : 'Join a space'}</h2>
+        <h2>
+          {mode === 'create' ? strings.spaceSetup.titleCreate : strings.spaceSetup.titleJoin}
+        </h2>
 
         <div className="segmented">
           <button
@@ -251,42 +263,42 @@ export function SpaceSetup({
             className={mode === 'create' ? 'segment segment-active' : 'segment'}
             onClick={() => setMode('create')}
           >
-            Create
+            {strings.spaceSetup.tabCreate}
           </button>
           <button
             type="button"
             className={mode === 'join' ? 'segment segment-active' : 'segment'}
             onClick={() => setMode('join')}
           >
-            Join
+            {strings.spaceSetup.tabJoin}
           </button>
         </div>
 
         {mode === 'create' ? (
           <label className="field">
-            <span>Name it</span>
+            <span>{strings.spaceSetup.nameIt}</span>
             <input
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="Home"
+              placeholder={strings.spaceSetup.namePlaceholder}
               maxLength={60}
               autoComplete="off"
             />
-            <small>You will get a code to invite the others.</small>
+            <small>{strings.spaceSetup.nameHint}</small>
           </label>
         ) : (
           <label className="field">
-            <span>Invite code</span>
+            <span>{strings.spaceSetup.codeLabel}</span>
             <input
               value={code}
               onChange={(event) => setCode(event.target.value.toUpperCase())}
-              placeholder="ABC123"
+              placeholder={strings.spaceSetup.codePlaceholder}
               maxLength={6}
               autoCapitalize="characters"
               autoComplete="off"
               className="code-input"
             />
-            <small>Ask whoever set up the space for the six-character code.</small>
+            <small>{strings.spaceSetup.codeHint}</small>
           </label>
         )}
 
@@ -295,11 +307,15 @@ export function SpaceSetup({
         <div className="sheet-actions">
           {allowCancel && (
             <button type="button" className="btn btn-ghost" onClick={onDone}>
-              Cancel
+              {strings.common.cancel}
             </button>
           )}
           <button type="submit" className="btn btn-primary" disabled={busy}>
-            {busy ? 'Working...' : mode === 'create' ? 'Create space' : 'Join'}
+            {busy
+              ? strings.common.working
+              : mode === 'create'
+                ? strings.spaceSetup.create
+                : strings.spaceSetup.join}
           </button>
         </div>
       </form>

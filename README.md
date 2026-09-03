@@ -1,133 +1,128 @@
 # PlantShare
 
-A shared watering list for the plants in a house. One person waters the basil,
-everyone else can see it is done.
+<div dir="rtl">
 
-It is a web app — a PWA — that installs to the Android home screen and behaves
-like any other app: an icon, its own window, and a notification every evening
-when something needs water. There is no APK to pass around; you invite someone
-by sending them a link.
+רשימת השקיה משותפת לצמחים שבבית. אחד משקה את הבזיליקום, כל השאר רואים שזה נעשה.
 
-## What it does
+זו אפליקציית ווב (PWA) שמתקינה את עצמה למסך הבית של אנדרואיד ומתנהגת כמו כל
+אפליקציה אחרת: אייקון משלה, חלון משלה, והתראה כל ערב כשמשהו צריך מים. אין קובץ
+APK להעביר לאנשים — מזמינים אותם עם קישור.
 
-- **Plants** have a name and a watering period in days. Add them by hand.
-- **Spaces** hold a plant list and the people who share it. Join with a
-  six-character code. One person can belong to several spaces.
-- **One notification a day**, at a time each person picks for themselves. It
-  arrives whether or not anyone has opened the app recently.
-- **Tapping the notification** opens the list of what needs water tonight.
-- **Marking a plant watered** restarts its countdown from that day. Anyone in
-  the space can do it.
-- **The same-evening rule.** A plant someone already watered stays on the list
-  for the rest of that evening, marked done and with their name on it, so a
-  second person opening the app can see it was handled. The next day it is gone
-  from the list entirely, until it is due again.
-- **Late warnings** on day 1, 2 and 3 past due, each more insistent than the
-  last. After the third the plant stays on the list but stops nagging.
+הממשק בעברית, בפריסת ימין-לשמאל.
 
-## How the reminder works
+## מה היא עושה
 
-A web app cannot wake itself up. A service worker only runs when a push message
-arrives, so the daily timer lives on the server rather than on the phone:
+- **צמחים** — שם ותקופת השקיה בימים. מוסיפים ידנית.
+- **מרחבים** — רשימת צמחים והאנשים שחולקים אותה. מצטרפים עם קוד בן שש תווים.
+  אדם אחד יכול להיות בכמה מרחבים.
+- **התראה אחת ביום**, בשעה שכל אחד בוחר לעצמו. היא מגיעה גם אם אף אחד לא פתח
+  את האפליקציה כבר שבועיים.
+- **לחיצה על ההתראה** פותחת את הרשימה של מה שצריך השקיה הערב.
+- **סימון "השקיתי"** מתחיל את הספירה מחדש מאותו יום. כל אחד במרחב יכול לסמן.
+- **הכלל של אותו ערב.** צמח שמישהו כבר השקה נשאר ברשימה עד סוף הערב, מסומן
+  כבוצע ועם השם של מי שהשקה, כדי שאדם שני שנכנס יראה שזה טופל. למחרת הוא נעלם
+  מהרשימה עד המועד הבא.
+- **אזהרות איחור** ביום 1, 2 ו-3, כל אחת דחופה מקודמתה. אחרי השלישית הצמח
+  נשאר ברשימה אבל מפסיק להתריע.
+
+## איך התזכורת עובדת
+
+אפליקציית ווב לא יכולה להעיר את עצמה. ה-service worker רץ רק כשמגיעה הודעת
+push, ולכן השעון היומי יושב בשרת ולא בטלפון:
 
 ```
-pg_cron (every 15 min)
-   -> send-reminders Edge Function
-        for each person whose reminder time just passed:
-          claim the day in notification_log  (the duplicate guard)
-          work out what is due across their spaces
-          push to their devices
-             -> service worker shows the notification
-                  -> tap -> opens the app on Tonight
+pg_cron (כל 15 דקות)
+   ← הפונקציה send-reminders
+        לכל אדם שהשעה שלו הרגע עברה:
+          תפיסת היום ב-notification_log   (מנגנון מניעת הכפילויות)
+          חישוב מה מגיע לו מכל המרחבים שלו
+          שליחת push למכשירים שלו
+             ← ה-service worker מציג את ההתראה
+                  ← לחיצה ← האפליקציה נפתחת על "הערב"
 ```
 
-Each person gets at most one notification per day. That is enforced by a primary
-key on `(user_id, local_date)`, not by trusting the schedule — two overlapping
-cron runs race on the insert and exactly one wins.
+כל אדם מקבל לכל היותר התראה אחת ביום. זה נאכף על ידי מפתח ראשי על
+`(user_id, local_date)`, ולא על ידי אמון בתזמון — שתי הרצות חופפות של המשימה
+מתחרות על אותו INSERT ובדיוק אחת מהן זוכה.
 
-Running the timer server-side has a side benefit over doing it on the device:
-the reminder still fires for someone who has not opened the app in weeks, and
-Android's battery optimiser cannot suppress it.
+לתזמון בצד השרת יש יתרון על פני התזמון שהיה בגרסת האנדרואיד: התזכורת יוצאת גם
+למי שלא פתח את האפליקציה שבועיים, ומיטוב הסוללה של אנדרואיד לא יכול לחנוק אותה.
 
-## Dates, not timestamps
+## תאריכים, לא חותמות זמן
 
-A plant is watered on an evening, not at an instant, so every date in the schema
-is a `date` and all the arithmetic is in whole days. This is why a daylight
-saving change cannot silently skip or repeat a watering, and why "today" is
-computed in each person's own timezone and passed in by whoever is acting.
+צמח מושקה בערב, לא ברגע מסוים, ולכן כל תאריך בסכימה הוא `date` וכל החישובים
+הם בימים שלמים. זו הסיבה שמעבר לשעון קיץ לא יכול לדלג על השקיה או לכפול אותה,
+ולכן "היום" מחושב באזור הזמן של האדם שפועל ומועבר על ידו.
 
-The rules themselves live in one file,
-[`supabase/functions/_shared/due.ts`](supabase/functions/_shared/due.ts), which
-is imported by both the React app and the reminder function — so the badge on
-screen and the text in the notification cannot disagree. It is pure functions
-over `YYYY-MM-DD` strings, and it is the part with real test coverage.
+הכללים עצמם יושבים בקובץ אחד,
+[`supabase/functions/_shared/due.ts`](supabase/functions/_shared/due.ts),
+שמיובא גם על ידי האפליקציה וגם על ידי פונקציית התזכורות — כך שהתווית שעל המסך
+וההתראה שבמגש לא יכולות לסתור זו את זו. אלה פונקציות טהורות מעל מחרוזות
+`YYYY-MM-DD`, וזה גם החלק שמכוסה בבדיקות.
 
-## Getting it running
+## התקנה
 
-See **[SETUP.md](SETUP.md)**. Three free accounts, no credit card, about 30
-minutes. The short version:
+הכול ב-**[SETUP.md](SETUP.md)** — בערך 25 דקות, הכול מהדפדפן, בלי כרטיס אשראי.
 
-1. Create a Supabase project, run `supabase/migrations/0001_init.sql`.
-2. Enable Google sign-in (a Google Cloud OAuth client, pasted into Supabase).
-3. `npm run vapid` for the notification keys.
-4. Put the keys in GitHub repository variables and Supabase function secrets.
-5. Push to `main` — GitHub Actions builds the app to Pages and deploys the
-   functions.
-6. Run `supabase/cron.sql` to schedule the daily check.
+בקצרה: פותחים פרויקט ב-Supabase, מריצים סקריפט SQL אחד (שכבר מכיל את מפתחות
+ההתראות, מייצר לעצמו סוד אקראי ומתזמן את המשימה היומית), מחברים כניסה עם
+Google, ממלאים שני ערכים ב-`src/config.ts`, ומדליקים GitHub Pages.
 
-## Working on it
+## פיתוח
 
 ```bash
 npm install
-cp .env.example .env.local   # fill in your Supabase details
+cp .env.example .env.local   # אופציונלי; אחרת נקרא מ-src/config.ts
 npm run dev
-npm test                     # watering rules and push encryption
+npm test                     # כללי ההשקיה והצפנת ה-push
 npm run typecheck
 ```
 
-`npm test` needs no network, no database and no browser.
+`npm test` לא דורש רשת, מסד נתונים או דפדפן.
 
-## Layout
+## מבנה
 
 ```
 src/
+  config.ts         שני הערכים שממלאים בהתקנה
   lib/
-    due.ts        re-export of the shared watering rules
-    api.ts        every database call the screens make
-    push.ts       permission, subscription, and the several ways it can fail
-    supabase.ts   client, and whether the build was configured at all
-  state/AppState.tsx   session, spaces, plants, and the realtime subscription
-  components/          screens and the pieces they share
+    strings.ts      כל טקסטי הממשק, בעברית, במקום אחד
+    format.ts       תאריכים ומספרים בעברית, כולל צורת הזוגי
+    due.ts          ייצוא מחדש של כללי ההשקיה המשותפים
+    api.ts          כל פנייה למסד הנתונים
+    push.ts         הרשאה, מנוי, וכל הדרכים שבהן זה יכול להיכשל
+  state/AppState.tsx   סשן, מרחבים, צמחים, והמנוי לעדכונים חיים
+  components/          המסכים והחלקים המשותפים
 supabase/
-  migrations/0001_init.sql   tables, row-level security, and the RPCs
-  cron.sql                   schedules the daily check
+  migrations/0001_init.sql   טבלאות, הרשאות, פונקציות, והתזמון היומי
   functions/
-    _shared/due.ts       the watering rules (source of truth)
-    _shared/webpush.ts   RFC 8291 push encryption on Web Crypto
-    send-reminders/      the daily job
-    send-test/           the "send me a test notification" button
+    _shared/due.ts       כללי ההשקיה (מקור האמת)
+    _shared/webpush.ts   הצפנת push לפי RFC 8291
+    _shared/config.ts    קריאת מפתחות השרת ממסד הנתונים
+    send-reminders/      המשימה היומית
+    send-test/           כפתור "שליחת התראת בדיקה"
 ```
 
-## Security
+## אבטחה
 
-Every table has row-level security, and the policies are the only access
-control — the client filters nothing itself. You can read a space only if you
-are a member of it; you can read a profile only if you share a space with that
-person; you can read your own push subscriptions and nobody else's. Joining a
-space goes through a `SECURITY DEFINER` function precisely because the joiner
-cannot see the space yet, which is the point.
+לכל טבלה יש Row Level Security, והמדיניות הזאת היא ההגנה היחידה — הלקוח לא
+מסנן כלום בעצמו. אפשר לקרוא מרחב רק אם אתה חבר בו; אפשר לקרוא פרופיל רק אם
+אתם חולקים מרחב; אפשר לקרוא את מנויי ההתראות שלך בלבד. הצטרפות למרחב עוברת
+דרך פונקציית `SECURITY DEFINER` בדיוק מפני שהמצטרף עדיין לא רואה את המרחב,
+וזו הנקודה — אין מדיניות INSERT על `space_members`, ולכן מי שיודע את המזהה של
+מרחב עדיין לא יכול להוסיף את עצמו אליו.
 
-The reminder function is not protected by a user session — pg_cron does not have
-one — so it checks a shared secret header instead, and it is the only thing in
-the project that uses the service-role key.
+מפתחות ההתראות והסוד של המשימה היומית יושבים בטבלה `app_config` שיש עליה RLS
+בלי אף מדיניות, כלומר אף משתמש מחובר לא קורא ממנה. רק הפונקציות בצד השרת,
+שרצות עם `service_role`, ניגשות אליה. פונקציית התזכורות לא מוגנת בסשן משתמש —
+ל-pg_cron אין כזה — ולכן היא בודקת סוד משותף שנוצר אוטומטית ואף אחד לא מקליד.
 
-## Known limits
+## מגבלות ידועות
 
-- **Android and desktop only, in practice.** iOS supports web push from 16.4,
-  but only after the page is added to the home screen; nothing here prevents it
-  working, it is just not what this was built and tested for.
-- **Delivery is within an hour of the time you set**, not to the minute. The
-  cron runs every 15 minutes and the function accepts a 60-minute window so a
-  slow run or a cold start cannot cause a silent miss.
-- **Whole days only.** No "water at 6am and again at 6pm".
-- **The interface is in English.**
+- **אנדרואיד ומחשב.** iOS תומך ב-web push מגרסה 16.4, אבל רק אחרי הוספה למסך
+  הבית. שום דבר כאן לא מונע את זה, פשוט לא שם נבדק.
+- **הדיוק הוא בטווח שעה** מהשעה שנקבעה, לא לדקה. המשימה רצה כל רבע שעה
+  והפונקציה מקבלת חלון של שעה, כך שהרצה איטית לא גורמת להחמצה שקטה.
+- **ימים שלמים בלבד.** אין "להשקות בשש בבוקר ושוב בשש בערב".
+
+</div>

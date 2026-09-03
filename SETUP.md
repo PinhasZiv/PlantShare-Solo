@@ -1,202 +1,252 @@
-# Setting up PlantShare
+# התקנה
 
-You need three free accounts: **GitHub** (you have one), **Supabase**, and a
-**Google Cloud** project for the sign-in button. No credit card, nothing to
-install, and every step can be done from a browser — including a phone browser,
-though a laptop makes the copying and pasting less painful.
+<div dir="rtl">
 
-Budget about 30 minutes for the first time through. When you are done, the app
-lives at `https://<your-github-username>.github.io/PlantShare-Solo/` and anyone
-you invite just opens that link.
+הכול מהדפדפן. אין מה להתקין במחשב, אין כרטיס אשראי, ואין שלב שדורש ידע
+בתכנות. סך הכול בערך 25 דקות, רובן המתנה.
+
+**מה כבר מוכן ולא צריך לגעת בו:** מפתחות ההתראות, הסוד של המשימה היומית,
+כל מבנה מסד הנתונים, הרשאות הגישה, התזמון של הבדיקה היומית, ותהליכי הבנייה
+וההעלאה. הכול כתוב ומחכה.
+
+**מה רק אתה יכול לעשות:** לפתוח את החשבונות (אני לא יכול להירשם בשמך), ולהעתיק
+ארבעה ערכים מהחשבונות האלה אל שני מקומות. זה הכול.
 
 ---
 
-## 1. Create the Supabase project
+## מה צריך לפני שמתחילים
 
-1. Sign up at [supabase.com](https://supabase.com) and create a **New project**.
-2. Give it a name (`plantshare`), set a database password (save it somewhere —
-   you will not need it for this app, but losing it is annoying later), and pick
-   the region closest to you.
-3. Wait for it to finish provisioning, about two minutes.
-
-From the project dashboard, open **Project Settings → Data API** and note:
-
-| What | Where it goes |
+| | |
 |---|---|
-| **Project URL** — `https://abcdefgh.supabase.co` | `VITE_SUPABASE_URL` |
-| **Project API key** (`anon` / publishable) | `VITE_SUPABASE_ANON_KEY` |
-| **Project ref** — the `abcdefgh` part of the URL | `SUPABASE_PROJECT_REF` |
+| חשבון GitHub | כבר יש לך |
+| חשבון Supabase | נפתח בשלב 1, חינם |
+| חשבון Google | כבר יש לך, משמש בשלב 3 |
+| **המפתח הפרטי להתראות** | קיבלת אותו בהודעה שלי יחד עם הקוד. שמור אותו בהישג יד — הוא נדרש בשלב 2 |
 
-The `anon` key is designed to be public. It ends up in the browser bundle, which
-is fine: every table is protected by row-level security, so the key alone grants
-nothing. The **`service_role` key is different — never put that in the app.**
+הכתובת שהאפליקציה תשב בה בסוף:
 
-## 2. Create the database tables
+```
+https://<שם המשתמש שלך ב-GitHub>.github.io/PlantShare-Solo/
+```
 
-1. In Supabase, open **SQL Editor → New query**.
-2. Copy the entire contents of [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql)
-   into the editor and click **Run**.
-3. It should report success. Open **Table Editor** and confirm you can see
-   `profiles`, `spaces`, `space_members`, `plants`, `watering_events`,
-   `push_subscriptions` and `notification_log`.
+כדאי לשמור אותה בצד. היא נדרשת בשלב 3, ואליה שולחים את מי שרוצים להזמין.
 
-## 3. Turn on Google sign-in
+---
 
-This is the fiddliest step, and it is the one that pays off later: nobody you
-invite has to create a password or install anything.
+## שלב 1 — פתיחת פרויקט ב-Supabase
 
-**In Google Cloud Console** ([console.cloud.google.com](https://console.cloud.google.com)):
+1. להיכנס ל-[supabase.com](https://supabase.com) ולהירשם (אפשר עם חשבון GitHub).
+2. **New project**. שם: `plantshare`. צריך לבחור סיסמה למסד הנתונים — היא לא
+   נדרשת לאפליקציה, אבל כדאי לשמור אותה.
+3. אזור (Region): **Frankfurt** או **London** הכי קרובים לישראל.
+4. **Create new project**, וממתינים בערך שתי דקות עד שהוא מוכן.
 
-1. Create a new project (name it `PlantShare`).
-2. Go to **APIs & Services → OAuth consent screen**. Choose **External**, fill
-   in an app name, your email as both support and developer contact, and save.
-   You can leave it in "Testing" mode, but then only accounts you add under
-   **Test users** can sign in — so click **Publish app** when you are ready to
-   invite people. (No Google verification review is needed for basic sign-in.)
-3. Go to **APIs & Services → Credentials → Create credentials → OAuth client ID**.
+כשהוא מוכן נכנסים ל־**Project Settings** ← **Data API** ומעתיקים לפנקס שני
+ערכים:
+
+| בדף | איך זה נראה | לאן זה הולך |
+|---|---|---|
+| **Project URL** | `https://abcdefghijklmnop.supabase.co` | שלב 4 |
+| **Project API key** (`anon` / publishable) | מחרוזת ארוכה | שלב 4 |
+
+וגם, מתוך הכתובת עצמה, את **ה-project ref** — החלק שלפני `.supabase.co`.
+בדוגמה למעלה זה `abcdefghijklmnop`. הוא נדרש בשלב 2 ובשלב 5.
+
+> **המפתח `anon` נועד להיות ציבורי** — הוא ממילא נשלח לכל דפדפן שפותח את
+> האפליקציה, וכל טבלה מוגנת בנפרד. לעומת זאת המפתח **`service_role`** באותו
+> דף הוא סוד אמיתי. הוא לא נדרש בשום שלב כאן. אין לשים אותו בשום מקום.
+
+---
+
+## שלב 2 — בניית מסד הנתונים (הרצה אחת)
+
+1. בתפריט הצדדי של Supabase: **SQL Editor** ← **New query**.
+2. לפתוח בגיטהאב את הקובץ
+   [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql),
+   ללחוץ על כפתור ההעתקה (Copy raw file), ולהדביק הכול בעורך.
+3. **בראש מה שהדבקת** יש בלוק מסומן בחצים. יש למלא בו שני ערכים:
+
+   ```sql
+   'PASTE_PROJECT_REF_HERE',        ←  ה-project ref משלב 1
+   'PASTE_VAPID_PRIVATE_KEY_HERE',  ←  המפתח הפרטי מההודעה שלי
+   ```
+
+   יש להשאיר את הגרשיים ולהחליף רק את הטקסט שבתוכם.
+   בשורה השלישית אפשר להחליף את `plantshare@example.com` במייל שלך, אבל זה
+   לא חובה.
+
+4. **Run** (או Ctrl+Enter).
+
+בסוף אמורה להופיע ההודעה:
+
+```
+✅ PlantShare הותקן. המשימה היומית רצה כל 15 דקות.
+```
+
+זהו. ההרצה הזאת בנתה את כל הטבלאות, את כללי ההרשאות, שמרה את מפתחות ההתראות,
+ייצרה סוד אקראי למשימה היומית, ותזמנה את הבדיקה שרצה כל רבע שעה. **אין צורך
+להגדיר שום סוד בלוח הבקרה של Supabase.**
+
+> טעית במשהו? מתקנים ומריצים שוב. הסקריפט בנוי להרצה חוזרת ולא מוחק נתונים.
+>
+> אם מופיעה שגיאה על `pg_cron` או `pg_net`, צריך להפעיל אותן ידנית:
+> **Database** ← **Extensions**, לחפש את השם, להדליק, ואז להריץ שוב.
+
+---
+
+## שלב 3 — כניסה עם Google
+
+השלב הארוך ביותר, וגם זה שחוסך הכי הרבה בהמשך: אף אחד מהאנשים שתזמין לא
+יצטרך להמציא סיסמה או להתקין משהו.
+
+### 3א. יצירת מזהה ב-Google Cloud
+
+נכנסים ל-[console.cloud.google.com](https://console.cloud.google.com).
+
+1. למעלה, בורר הפרויקטים ← **New Project** ← שם: `PlantShare` ← **Create**.
+   לוודא שהפרויקט החדש הוא זה שנבחר בבורר.
+2. בתפריט: **APIs & Services** ← **OAuth consent screen**.
+   - **User Type: External** ← **Create**
+   - App name: `PlantShare`
+   - User support email: המייל שלך
+   - Developer contact information: אותו מייל
+   - **Save and Continue** בכל המסכים הבאים עד הסוף.
+3. **APIs & Services** ← **Credentials** ← **Create credentials** ←
+   **OAuth client ID**.
    - Application type: **Web application**
-   - **Authorized redirect URIs** — add exactly this, with your project ref:
+   - Name: `PlantShare`
+   - תחת **Authorized redirect URIs** ← **ADD URI**, ומדביקים בדיוק את זה,
+     עם ה-project ref שלך:
+
      ```
      https://<PROJECT_REF>.supabase.co/auth/v1/callback
      ```
-4. Copy the **Client ID** and **Client secret**.
 
-**Back in Supabase:**
+     שים לב: זו הכתובת של **Supabase**, לא של האפליקציה שלך.
+   - **Create**. נפתח חלון עם **Client ID** ו-**Client secret** — משאירים
+     אותו פתוח.
 
-5. **Authentication → Sign In / Providers → Google**: enable it, paste the client
-   ID and secret, save.
-6. **Authentication → URL Configuration**:
-   - **Site URL**: `https://<your-github-username>.github.io/PlantShare-Solo/`
-   - **Redirect URLs**: add the same URL. If you also want to run the app
-     locally, add `http://localhost:5173/` on its own line.
+### 3ב. חיבור ל-Supabase
 
-> The trailing slash matters. If sign-in bounces you back to a blank page, a
-> mismatch here is almost always why.
+חוזרים ללשונית של Supabase:
 
-## 4. Generate the notification keys
+4. **Authentication** ← **Sign In / Providers** ← **Google**.
+   - להדליק את **Enable Sign in with Google**
+   - להדביק את **Client ID** ואת **Client Secret** מהחלון של Google
+   - **Save**
+5. **Authentication** ← **URL Configuration**:
+   - **Site URL**: `https://<שם המשתמש שלך>.github.io/PlantShare-Solo/`
+   - **Redirect URLs** ← **Add URL**: אותה כתובת בדיוק.
 
-Push notifications are signed with a key pair that is unique to your app (this
-is VAPID — it is how a push service knows the notification really came from
-you). Generate one:
+> **הקו הנטוי בסוף הכתובת חשוב.** אם אחרי הכניסה עם Google מגיעים לדף לבן,
+> כמעט תמיד זה בגלל אי-התאמה כאן.
 
-- **With Node installed:** clone the repo and run `npm run vapid`.
-- **Without installing anything:** in GitHub, open the **Actions** tab → run any
-  workflow → or simply use a Codespace and run the same command there.
+### 3ג. פתיחה לכולם
 
-You get two strings. The public one goes into the app; the private one stays on
-the server. **Generating new keys later invalidates everyone's notifications**,
-so keep them.
+6. חזרה ל-Google Cloud ← **OAuth consent screen** ← **Publish app** ←
+   **Confirm**.
 
-## 5. Configure the Edge Functions
-
-In Supabase, go to **Edge Functions → Secrets** (or **Project Settings →
-Edge Functions**) and add four secrets:
-
-| Name | Value |
-|---|---|
-| `VAPID_PUBLIC_KEY` | the public key from step 4 |
-| `VAPID_PRIVATE_KEY` | the private key from step 4 |
-| `VAPID_SUBJECT` | `mailto:your-email@example.com` |
-| `CRON_SECRET` | any long random string you make up |
-
-`CRON_SECRET` is what stops a stranger from triggering your reminder job. Make
-it long and paste it somewhere — step 7 needs it again.
-
-## 6. Set up GitHub
-
-**Repository variables** — Settings → Secrets and variables → Actions →
-**Variables** tab → New repository variable:
-
-| Name | Value |
-|---|---|
-| `VITE_SUPABASE_URL` | your project URL |
-| `VITE_SUPABASE_ANON_KEY` | your anon key |
-| `VITE_VAPID_PUBLIC_KEY` | the VAPID **public** key |
-
-**Repository secrets** — the **Secrets** tab of the same page:
-
-| Name | Value |
-|---|---|
-| `SUPABASE_ACCESS_TOKEN` | from [supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens) |
-| `SUPABASE_PROJECT_REF` | the `abcdefgh` part of your project URL |
-
-**Enable Pages** — Settings → Pages → **Source: GitHub Actions**.
-
-Now push to `main` (or open the **Actions** tab and run **Build and deploy**
-manually). Two workflows run: one builds the app and publishes it to Pages, the
-other deploys the Edge Functions to Supabase.
-
-> The deploy workflow watches the `main` branch. If you are working on another
-> branch, either merge to `main` or add your branch to the `branches:` list in
-> `.github/workflows/deploy.yml`.
-
-## 7. Schedule the daily check
-
-1. Open [`supabase/cron.sql`](supabase/cron.sql).
-2. Replace `<PROJECT_REF>` and `<CRON_SECRET>` with your values.
-3. Paste it into the Supabase **SQL Editor** and run it.
-
-This tells Postgres to poke the reminder function every 15 minutes. The function
-looks at whose reminder time has just passed and messages only those people —
-each person gets at most one notification a day, guaranteed by the database, not
-by hoping the schedule behaves.
-
-Verify it registered:
-
-```sql
-select jobname, schedule, active from cron.job;
-```
-
-## 8. Try it on the phone
-
-1. Open `https://<your-github-username>.github.io/PlantShare-Solo/` in Chrome on
-   Android.
-2. Sign in with Google.
-3. Create a space, add a plant.
-4. Chrome menu (⋮) → **Add to Home screen**. Do this before turning on
-   notifications — an installed app gets more reliable delivery.
-5. Open the installed app → **Settings** → **Turn on reminders** → allow the
-   permission prompt.
-6. Tap **Send a test notification**. It should arrive within a few seconds.
-
-If the test arrives, everything is wired up. Set your reminder time and you are
-done.
-
-## 9. Invite the others
-
-Space tab → **Share invite**. They open the link, sign in with Google, enter the
-six-character code, and they are in. Each person sets their own reminder time in
-their own Settings.
+   כל עוד לא עשית את זה, רק חשבונות שרשומים ידנית תחת **Test users** יוכלו
+   להיכנס, וכל השאר יראו אזהרה. אין צורך בשום בדיקה או אישור מגוגל —
+   זו רק כניסה בסיסית.
 
 ---
 
-## When something does not work
+## שלב 4 — חיבור האפליקציה למסד הנתונים
 
-**The app shows "PlantShare needs configuring".**
-The build had no Supabase details. Check the three repository **variables** are
-in the Variables tab (not Secrets — the build cannot read secrets into the
-bundle), then re-run the deploy workflow.
+עריכה של קובץ אחד, ישירות בדפדפן:
 
-**Sign-in redirects to a blank page or "requested path is invalid".**
-The Site URL and Redirect URLs in Supabase must match your Pages URL exactly,
-trailing slash included. Check the redirect URI in Google Cloud is the Supabase
-`.../auth/v1/callback` address, not your app's address.
+1. בגיטהאב, ברפוזיטורי שלך, לפתוח את `src/config.ts`.
+2. ללחוץ על סמל העיפרון (**Edit this file**).
+3. להחליף את שני הערכים בערכים משלב 1:
 
-**Sign-in says the app is blocked or unverified.**
-Your OAuth consent screen is still in Testing mode. Either add the person under
-**Test users**, or click **Publish app**.
+   ```ts
+   export const SUPABASE_URL = 'https://abcdefghijklmnop.supabase.co'
+   export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6...'
+   ```
 
-**The test notification says "no subscriptions".**
-Turn reminders on first, on that device. Each device subscribes separately —
-turning them on your phone does nothing for your laptop.
+4. **Commit changes** ← **Commit directly to the main branch** ← **Commit**.
 
-**The test notification fails with a rejection.**
-The `VAPID_PUBLIC_KEY` in the Supabase secrets and the `VITE_VAPID_PUBLIC_KEY`
-in the GitHub variables must be the same string. If you regenerated the keys,
-everyone has to turn reminders off and on again.
+השמירה מפעילה מיד את הבנייה מחדש. אין צורך להגדיר משתנים או סודות לבנייה.
 
-**Nothing arrives at the scheduled time.**
-Check the job is running and what it returned:
+---
+
+## שלב 5 — העלאת האפליקציה והפונקציות
+
+### 5א. הפעלת GitHub Pages
+
+**Settings** ← **Pages** ← תחת **Source** לבחור **GitHub Actions**. זה הכול.
+
+### 5ב. שני סודות להעלאת הפונקציות
+
+**Settings** ← **Secrets and variables** ← **Actions** ← לשונית **Secrets** ←
+**New repository secret**, פעמיים:
+
+| Name | Secret |
+|---|---|
+| `SUPABASE_ACCESS_TOKEN` | נוצר ב-[supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens) ← **Generate new token**. מוצג פעם אחת בלבד |
+| `SUPABASE_PROJECT_REF` | ה-project ref משלב 1 |
+
+### 5ג. הרצה
+
+לשונית **Actions** ← אם אין ריצה שרצה מעצמה, בוחרים **Build and deploy** ←
+**Run workflow**. עושים אותו דבר ל-**Deploy Supabase functions**.
+
+כששתי הריצות ירוקות, האפליקציה חיה בכתובת שלה.
+
+> הפריסה עוקבת אחרי הענף `main`. אם העבודה נמצאת בענף אחר, צריך למזג אותו
+> ל-`main` (Pull request ← Merge) כדי שהאתר יתעדכן.
+
+---
+
+## שלב 6 — התקנה בטלפון ובדיקה
+
+1. לפתוח את הכתובת בכרום באנדרואיד.
+2. **כניסה עם Google**.
+3. תפריט הכרום (⋮) ← **הוספה למסך הבית**. **כדאי לעשות את זה עכשיו, לפני
+   הפעלת ההתראות** — לאפליקציה מותקנת יש קבלת התראות אמינה יותר.
+4. לפתוח את האפליקציה **מהאייקון החדש במסך הבית**, לא מהלשונית.
+5. ליצור מרחב, להוסיף צמח.
+6. **הגדרות** ← **הפעלת תזכורות** ← לאשר את בקשת ההרשאה.
+7. **שליחת התראת בדיקה**. אמורה להגיע תוך שניות.
+
+הגיעה? הכול עובד. נשאר רק לקבוע את שעת התזכורת באותו מסך.
+
+---
+
+## שלב 7 — הזמנת אנשים
+
+לשונית **מרחב** ← **שליחת הזמנה**. נפתחת חלונית השיתוף של אנדרואיד, אפשר
+לשלוח בוואטסאפ.
+
+מי שמקבל: פותח את הקישור, נכנס עם Google, מקליד את הקוד בן שש התווים, ומוסיף
+למסך הבית. כל אחד קובע לעצמו שעת תזכורת משלו.
+
+---
+
+## אם משהו לא עובד
+
+**האפליקציה מציגה "צריך להשלים הגדרה".**
+`src/config.ts` עדיין מכיל את הטקסט `PASTE_...`, או שהבנייה האחרונה עדיין
+רצה. בודקים בלשונית Actions שהריצה הסתיימה בירוק, ואז מרעננים.
+
+**אחרי הכניסה עם Google מגיעים לדף לבן, או "requested path is invalid".**
+ה-**Site URL** וה-**Redirect URLs** ב-Supabase חייבים להיות זהים לחלוטין
+לכתובת האתר, כולל הקו הנטוי בסוף. ובגוגל, כתובת ה-redirect היא זו של
+Supabase (`.../auth/v1/callback`), לא של האפליקציה.
+
+**גוגל מציגה "This app is blocked" או אזהרת אפליקציה לא מאומתת.**
+לא עשית את שלב 3ג. **Publish app**.
+
+**"המכשיר הזה עדיין לא רשום" בהתראת הבדיקה.**
+צריך קודם ללחוץ **הפעלת תזכורות** באותו מכשיר. כל מכשיר נרשם בנפרד.
+
+**התראת הבדיקה נכשלת.**
+המפתח הפרטי שהודבק בשלב 2 לא תואם לציבורי שבקוד. מריצים מחדש את הסקריפט
+משלב 2 עם המפתח הנכון, ואז מכבים ומדליקים את התזכורות בטלפון.
+
+**בשעה שקבעתי לא הגיע כלום.**
+בודקים ב-Supabase ← **SQL Editor** מה קרה בהרצות האחרונות:
 
 ```sql
 select status, return_message, start_time
@@ -204,23 +254,25 @@ from cron.job_run_details
 order by start_time desc limit 10;
 ```
 
-Then call the function yourself with `?dry=1` — it reports who it *would*
-notify, without sending anything or marking the day as done:
+ואפשר גם לשאול את הפונקציה ישירות את מי היא **הייתה** מתריעה עכשיו, בלי
+לשלוח כלום ובלי לסמן את היום כטופל:
 
-```bash
-curl -i "https://<PROJECT_REF>.supabase.co/functions/v1/send-reminders?dry=1" \
-  -H "x-cron-secret: <CRON_SECRET>"
+```sql
+select net.http_post(
+  url := (select functions_url from public.app_config) || '?dry=1',
+  headers := jsonb_build_object('x-cron-secret', (select cron_secret from public.app_config)),
+  body := '{}'::jsonb
+);
 ```
 
-A `403` means the secret does not match. An empty `report` means nobody's
-reminder time falls in the current 60-minute window — which is the expected
-answer most of the time.
+`report` ריק זו התשובה הרגילה ברוב שעות היום — היא אומרת שלאף אחד לא הגיעה
+כרגע שעת התזכורת.
 
-**Notifications stop arriving after a while.**
-Android's battery optimiser can throttle a browser's background work. Settings →
-Apps → Chrome → Battery → **Unrestricted** helps. This is also why installing to
-the home screen is worth doing.
+**ההתראות הפסיקו להגיע אחרי כמה ימים.**
+מיטוב הסוללה של אנדרואיד חונק את הכרום ברקע.
+הגדרות ← אפליקציות ← Chrome ← סוללה ← **ללא הגבלה**.
 
-**Free-tier Supabase projects pause after a week of inactivity.**
-The cron job counts as activity, so a live app stays awake on its own. A project
-you set up and then ignore for a week may need waking from the dashboard.
+**פרויקט Supabase חינמי נכנס להשהיה אחרי שבוע ללא פעילות.**
+המשימה היומית נחשבת פעילות, ולכן אפליקציה חיה לא נרדמת מעצמה.
+
+</div>

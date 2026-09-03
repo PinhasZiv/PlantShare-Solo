@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { addDays } from '../lib/due'
 import { formatDate } from '../lib/format'
+import { strings } from '../lib/strings'
 import type { Plant } from '../lib/types'
 
 export interface PlantDraft {
@@ -18,38 +19,38 @@ interface PlantFormProps {
   onDelete?: () => Promise<void>
 }
 
-// Common enough to be worth one tap; anything else goes in the number field.
+// נפוץ מספיק כדי להצדיק לחיצה אחת; כל השאר נכנס בשדה המספרי.
 const PRESETS = [
-  { days: 1, label: 'Daily' },
-  { days: 3, label: '3 days' },
-  { days: 7, label: 'Weekly' },
-  { days: 14, label: '2 weeks' },
-  { days: 30, label: 'Monthly' },
+  { days: 1, label: strings.plantForm.presets.daily },
+  { days: 3, label: strings.plantForm.presets.threeDays },
+  { days: 7, label: strings.plantForm.presets.weekly },
+  { days: 14, label: strings.plantForm.presets.twoWeeks },
+  { days: 30, label: strings.plantForm.presets.monthly },
 ]
 
 export function PlantForm({ today, existing, onCancel, onSave, onDelete }: PlantFormProps) {
   const [name, setName] = useState(existing?.name ?? '')
   const [periodDays, setPeriodDays] = useState(existing?.period_days ?? 7)
-  // A new plant defaults to "water it tonight", which is almost always what
-  // someone adding a plant in the evening means.
+  // ברירת המחדל לצמח חדש היא "להשקות הערב", וזה כמעט תמיד מה שמתכוונים אליו
+  // כשמוסיפים צמח בערב.
   const [firstDueDate, setFirstDueDate] = useState(existing?.next_due_date ?? today)
   const [notes, setNotes] = useState(existing?.notes ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Focus lands on the name field so the keyboard is already up.
+    // הפוקוס נוחת על שדה השם כדי שהמקלדת תהיה כבר פתוחה.
     document.getElementById('plant-name')?.focus()
   }, [])
 
   async function save(event: React.FormEvent) {
     event.preventDefault()
     if (!name.trim()) {
-      setError('Give the plant a name.')
+      setError(strings.plantForm.errorNoName)
       return
     }
     if (!Number.isInteger(periodDays) || periodDays < 1 || periodDays > 365) {
-      setError('The watering period must be between 1 and 365 days.')
+      setError(strings.plantForm.errorPeriod)
       return
     }
 
@@ -69,24 +70,24 @@ export function PlantForm({ today, existing, onCancel, onSave, onDelete }: Plant
         className="sheet"
         onClick={(event) => event.stopPropagation()}
         onSubmit={save}
-        aria-label={existing ? 'Edit plant' : 'Add plant'}
+        aria-label={existing ? strings.plantForm.titleEdit : strings.plantForm.titleNew}
       >
-        <h2>{existing ? 'Edit plant' : 'New plant'}</h2>
+        <h2>{existing ? strings.plantForm.titleEdit : strings.plantForm.titleNew}</h2>
 
         <label className="field">
-          <span>Name</span>
+          <span>{strings.plantForm.name}</span>
           <input
             id="plant-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="Basil on the kitchen sill"
+            placeholder={strings.plantForm.namePlaceholder}
             maxLength={80}
             autoComplete="off"
           />
         </label>
 
         <fieldset className="field">
-          <legend>Water every</legend>
+          <legend>{strings.plantForm.waterEvery}</legend>
           <div className="preset-row">
             {PRESETS.map((preset) => (
               <button
@@ -106,14 +107,16 @@ export function PlantForm({ today, existing, onCancel, onSave, onDelete }: Plant
               max={365}
               value={periodDays}
               onChange={(event) => setPeriodDays(Number(event.target.value))}
-              aria-label="Days between watering"
+              aria-label={strings.plantForm.daysAria}
             />
-            <span>days</span>
+            <span>{strings.plantForm.daysUnit}</span>
           </div>
         </fieldset>
 
         <label className="field">
-          <span>{existing ? 'Next watering' : 'First watering'}</span>
+          <span>
+            {existing ? strings.plantForm.nextWatering : strings.plantForm.firstWatering}
+          </span>
           <input
             type="date"
             value={firstDueDate}
@@ -124,11 +127,11 @@ export function PlantForm({ today, existing, onCancel, onSave, onDelete }: Plant
         </label>
 
         <label className="field">
-          <span>Notes (optional)</span>
+          <span>{strings.plantForm.notes}</span>
           <input
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
-            placeholder="Half a cup, no saucer"
+            placeholder={strings.plantForm.notesPlaceholder}
             maxLength={200}
           />
         </label>
@@ -137,10 +140,14 @@ export function PlantForm({ today, existing, onCancel, onSave, onDelete }: Plant
 
         <div className="sheet-actions">
           <button type="button" className="btn btn-ghost" onClick={onCancel}>
-            Cancel
+            {strings.common.cancel}
           </button>
           <button type="submit" className="btn btn-primary" disabled={busy}>
-            {busy ? 'Saving...' : existing ? 'Save' : 'Add plant'}
+            {busy
+              ? strings.common.saving
+              : existing
+                ? strings.common.save
+                : strings.plantForm.add}
           </button>
         </div>
 
@@ -149,7 +156,7 @@ export function PlantForm({ today, existing, onCancel, onSave, onDelete }: Plant
             type="button"
             className="btn btn-danger-text"
             onClick={async () => {
-              if (!window.confirm(`Delete ${existing?.name}? This removes it for everyone in the space.`)) return
+              if (!window.confirm(strings.plantForm.confirmDelete(existing?.name ?? ''))) return
               setBusy(true)
               try {
                 await onDelete()
@@ -159,7 +166,7 @@ export function PlantForm({ today, existing, onCancel, onSave, onDelete }: Plant
               }
             }}
           >
-            Delete this plant
+            {strings.plantForm.delete}
           </button>
         )}
       </form>
