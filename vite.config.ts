@@ -9,5 +9,5 @@ export default defineConfig({
   base: process.env.VITE_BASE ?? '/',
   plugins: [react()],
   build: { outDir: 'dist', sourcemap: false },
-  test: { environment: 'node', include: ['src/**/*.test.ts'] },
+  test: { environment: 'node', include: ['src/**/*.test.ts', 'supabase/**/*.test.ts'] },
 })

@@ -1,23 +1,10 @@
--- ============================================================================
---  PlantShare - התקנה מלאה בהרצה אחת
---
---  יש למלא שני ערכים בבלוק שלמטה, ואז Run. הסקריפט בונה את כל הטבלאות,
---  את כללי ההרשאות, ואת המשימה היומית ששולחת את ההתראות.
---
---  אפשר להריץ אותו שוב בבטחה - הוא לא מוחק נתונים קיימים.
--- ============================================================================
+-- ========================================
+--  PlantShare - התקנה מלאה בהרצה אחת.
+--  ממלאים שני ערכים בבלוק שלמטה ולוחצים Run. בטוח להריץ שוב.
+--  הסבר מלא על המבנה נמצא ב-README.
+-- ========================================
 
--- PlantShare schema.
---
--- Dates are stored as plain `date`, never timestamps: a plant is watered on an
--- evening, not at a moment. Every "today" is computed in the acting user's own
--- timezone and passed in, so a household spread across timezones still agrees
--- on what a day is for the person doing the tapping.
-
-
--- --------------------------------------------------------------- הגדרות ----
---
---  ⬇️  שני הערכים היחידים שצריך למלא בקובץ הזה  ⬇️
+-- ⬇️  שני הערכים שצריך למלא  ⬇️
 
 create schema if not exists private_setup;
 create or replace function private_setup.values()
@@ -25,24 +12,21 @@ returns table (project_ref text, vapid_private_key text, contact_email text)
 language sql immutable as $$
   select
     -- ה-project ref: החלק שלפני supabase.co בכתובת הפרויקט.
-    -- למשל אם הכתובת היא https://abcdefghijklmnop.supabase.co
-    -- אז צריך לכתוב כאן abcdefghijklmnop
+    -- מ-https://abcdefghijklmnop.supabase.co כותבים abcdefghijklmnop
     'PASTE_PROJECT_REF_HERE',
 
     -- המפתח הפרטי של ההתראות. קיבלת אותו יחד עם הקוד.
     'PASTE_VAPID_PRIVATE_KEY_HERE',
 
-    -- כתובת מייל ליצירת קשר. שירותי ההתראות דורשים אותה כדי לדעת למי לפנות
-    -- אם משהו משתבש. היא לא מוצגת לאף אחד באפליקציה.
+    -- מייל ליצירת קשר, לשירותי ההתראות. לא מוצג באפליקציה.
     'plantshare@example.com';
 $$;
 
 --  ⬆️  מכאן והלאה אין מה לשנות  ⬆️
--- ----------------------------------------------------------------------------
 
 create extension if not exists "pgcrypto";
 
--- ---------------------------------------------------------------- profiles --
+-- profiles --
 
 create table if not exists public.profiles (
   id              uuid primary key references auth.users(id) on delete cascade,
@@ -55,14 +39,13 @@ create table if not exists public.profiles (
   created_at      timestamptz not null default now()
 );
 
--- שפת הממשק. נוספת בנפרד כדי שהסקריפט יוסיף אותה גם למסד נתונים שכבר הורץ
--- בו הסקריפט הקודם. היא nullable בכוונה: ברירת מחדל בצד השרת הייתה דורסת את
--- השפה שהדפדפן זיהה ברגע שנכנסים.
+-- שפת הממשק. nullable בכוונה: ברירת מחדל הייתה דורסת את שפת הדפדפן.
+-- נוספת ב-alter נפרד כדי שהסקריפט יעדכן גם מסד נתונים קיים.
 alter table public.profiles
   add column if not exists language text check (language in ('he', 'en'));
 
--- Every signed-in user gets a profile row automatically; the app never has to
--- deal with the "signed in but no profile yet" state.
+-- Every signed-in user gets a profile row, so the app never meets a
+-- "signed in but no profile" state.
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
@@ -83,7 +66,7 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- ------------------------------------------------------------------ spaces --
+-- spaces --
 
 create table if not exists public.spaces (
   id          uuid primary key default gen_random_uuid(),
@@ -95,9 +78,7 @@ create table if not exists public.spaces (
 
 create table if not exists public.space_members (
   space_id  uuid not null references public.spaces(id) on delete cascade,
-  -- Points at profiles rather than auth.users so the members list can be
-  -- fetched with the display names embedded in one query. profiles itself
-  -- cascades from auth.users, so deleting an account still cleans up.
+  -- profiles, not auth.users, so PostgREST can embed the names in one query.
   user_id   uuid not null references public.profiles(id) on delete cascade,
   role      text not null default 'member' check (role in ('owner', 'member')),
   joined_at timestamptz not null default now(),
@@ -106,7 +87,7 @@ create table if not exists public.space_members (
 
 create index if not exists space_members_user_idx on public.space_members(user_id);
 
--- ------------------------------------------------------------------ plants --
+-- plants --
 
 create table if not exists public.plants (
   id                uuid primary key default gen_random_uuid(),
@@ -124,8 +105,7 @@ create table if not exists public.plants (
 create index if not exists plants_space_idx on public.plants(space_id);
 create index if not exists plants_due_idx on public.plants(next_due_date);
 
--- One row per watering. Keeps the history, and carries the pre-watering state
--- so "undo" restores exactly what was there rather than guessing.
+-- Carries the pre-watering state so undo restores it exactly.
 create table if not exists public.watering_events (
   id                     uuid primary key default gen_random_uuid(),
   plant_id               uuid not null references public.plants(id) on delete cascade,
@@ -140,7 +120,7 @@ create table if not exists public.watering_events (
 
 create index if not exists watering_events_plant_idx on public.watering_events(plant_id, created_at desc);
 
--- ----------------------------------------------------------------- pushing --
+-- pushing --
 
 create table if not exists public.push_subscriptions (
   id            uuid primary key default gen_random_uuid(),
@@ -156,8 +136,8 @@ create table if not exists public.push_subscriptions (
 
 create index if not exists push_subscriptions_user_idx on public.push_subscriptions(user_id);
 
--- The idempotency guard for the daily job: at most one reminder per user per
--- local day, no matter how many times the cron fires or overlaps.
+-- The duplicate guard: one reminder per user per local day, however many
+-- times the cron fires or overlaps.
 create table if not exists public.notification_log (
   user_id    uuid not null references auth.users(id) on delete cascade,
   local_date date not null,
@@ -167,10 +147,10 @@ create table if not exists public.notification_log (
   primary key (user_id, local_date)
 );
 
--- --------------------------------------------------------------- helpers ----
+-- helpers --
 
--- SECURITY DEFINER so RLS policies on space_members can ask "is this person a
--- member?" without the policy re-triggering itself.
+-- SECURITY DEFINER so an RLS policy can ask "is this person a member?"
+-- without re-triggering itself.
 create or replace function public.is_member(p_space uuid)
 returns boolean language sql security definer stable set search_path = public as $$
   select exists (
@@ -197,8 +177,7 @@ returns boolean language sql security definer stable set search_path = public as
   );
 $$;
 
--- Ambiguous characters (0/O, 1/I/L) are left out so a code read aloud or typed
--- from a screenshot still works.
+-- No 0/O or 1/I/L, so a code read aloud or typed from a screenshot works.
 create or replace function public.generate_invite_code()
 returns text language plpgsql as $$
 declare
@@ -216,7 +195,17 @@ begin
 end;
 $$;
 
--- ------------------------------------------------------------------- RLS ----
+-- RLS --
+
+-- Cleared first so the script re-runs; all are recreated below.
+do $$
+declare r record;
+begin
+  for r in select policyname, tablename from pg_policies where schemaname = 'public'
+  loop
+    execute format('drop policy if exists %I on public.%I', r.policyname, r.tablename);
+  end loop;
+end $$;
 
 alter table public.profiles           enable row level security;
 alter table public.spaces             enable row level security;
@@ -226,75 +215,53 @@ alter table public.watering_events    enable row level security;
 alter table public.push_subscriptions enable row level security;
 alter table public.notification_log   enable row level security;
 
--- You can see yourself, and anyone you share a space with (so the app can show
--- "watered by Dana" rather than a bare user id).
-drop policy if exists profiles_select on public.profiles;
+-- Yourself, plus anyone you share a space with, so the app can say
+-- "watered by Dana" rather than showing an id.
 create policy profiles_select on public.profiles for select
   using (id = auth.uid() or public.shares_space_with(id));
-drop policy if exists profiles_update on public.profiles;
 create policy profiles_update on public.profiles for update
   using (id = auth.uid()) with check (id = auth.uid());
 
-drop policy if exists spaces_select on public.spaces;
 create policy spaces_select on public.spaces for select
   using (public.is_member(id));
--- Spaces are created through create_space(), which also makes the creator an
--- owner; a bare insert would produce a space nobody is a member of.
-drop policy if exists spaces_update on public.spaces;
+-- No insert policy: create_space() also makes the creator an owner.
 create policy spaces_update on public.spaces for update
   using (public.is_owner(id)) with check (public.is_owner(id));
-drop policy if exists spaces_delete on public.spaces;
 create policy spaces_delete on public.spaces for delete
   using (public.is_owner(id));
 
-drop policy if exists space_members_select on public.space_members;
 create policy space_members_select on public.space_members for select
   using (public.is_member(space_id));
--- There is deliberately no insert policy. Membership is only ever granted by
--- create_space() and join_space_by_code(), which are SECURITY DEFINER and so
--- bypass RLS. Allowing a direct insert of "user_id = auth.uid()" would let
--- anyone who learned a space's id add themselves to it.
--- You can always remove yourself; an owner can remove anyone.
-drop policy if exists space_members_delete on public.space_members;
+-- Also no insert policy: membership comes only from create_space() and
+-- join_space_by_code(). "user_id = auth.uid()" would let anyone who learned
+-- a space id join it. Delete: yourself always, others if owner.
 create policy space_members_delete on public.space_members for delete
   using (user_id = auth.uid() or public.is_owner(space_id));
 
-drop policy if exists plants_select on public.plants;
 create policy plants_select on public.plants for select
   using (public.is_member(space_id));
-drop policy if exists plants_insert on public.plants;
 create policy plants_insert on public.plants for insert
   with check (public.is_member(space_id) and created_by = auth.uid());
-drop policy if exists plants_update on public.plants;
 create policy plants_update on public.plants for update
   using (public.is_member(space_id)) with check (public.is_member(space_id));
-drop policy if exists plants_delete on public.plants;
 create policy plants_delete on public.plants for delete
   using (public.is_member(space_id));
 
-drop policy if exists watering_events_select on public.watering_events;
 create policy watering_events_select on public.watering_events for select
   using (public.is_member(space_id));
-drop policy if exists watering_events_insert on public.watering_events;
 create policy watering_events_insert on public.watering_events for insert
   with check (public.is_member(space_id) and user_id = auth.uid());
-drop policy if exists watering_events_delete on public.watering_events;
 create policy watering_events_delete on public.watering_events for delete
   using (public.is_member(space_id));
 
-drop policy if exists push_select on public.push_subscriptions;
 create policy push_select on public.push_subscriptions for select using (user_id = auth.uid());
-drop policy if exists push_insert on public.push_subscriptions;
 create policy push_insert on public.push_subscriptions for insert with check (user_id = auth.uid());
-drop policy if exists push_update on public.push_subscriptions;
 create policy push_update on public.push_subscriptions for update using (user_id = auth.uid());
-drop policy if exists push_delete on public.push_subscriptions;
 create policy push_delete on public.push_subscriptions for delete using (user_id = auth.uid());
 
-drop policy if exists notification_log_select on public.notification_log;
 create policy notification_log_select on public.notification_log for select using (user_id = auth.uid());
 
--- ------------------------------------------------------------------ RPCs ----
+-- RPCs --
 
 create or replace function public.create_space(p_name text)
 returns public.spaces language plpgsql security definer set search_path = public as $$
@@ -316,8 +283,7 @@ begin
 end;
 $$;
 
--- SECURITY DEFINER because the joiner cannot read the space yet: RLS hides
--- spaces you are not a member of, which is exactly the point.
+-- SECURITY DEFINER: the joiner cannot read the space yet, which is the point.
 create or replace function public.join_space_by_code(p_code text)
 returns public.spaces language plpgsql security definer set search_path = public as $$
 declare
@@ -342,8 +308,7 @@ begin
 end;
 $$;
 
--- Marking watered is two writes that must not drift apart, so it lives in one
--- statement-level function rather than two round trips from the phone.
+-- Two writes that must not drift apart, so one function not two round trips.
 create or replace function public.mark_watered(p_plant uuid, p_today date)
 returns public.watering_events language plpgsql security definer set search_path = public as $$
 declare
@@ -368,8 +333,7 @@ begin
   )
   returning * into event;
 
-  -- The next period counts from the day it was actually watered, so a plant you
-  -- were late on does not stay permanently behind schedule.
+  -- From the day it was actually watered, so a late plant does not stay behind.
   update public.plants
   set next_due_date     = p_today + target.period_days,
       last_watered_date = p_today,
@@ -403,8 +367,7 @@ begin
 end;
 $$;
 
--- Leaving a space you own would orphan it, so the last owner has to hand it
--- over or delete the space instead.
+-- The last owner cannot walk out and orphan the space.
 create or replace function public.leave_space(p_space uuid)
 returns void language plpgsql security definer set search_path = public as $$
 begin
@@ -424,8 +387,7 @@ begin
 end;
 $$;
 
--- Live updates so a plant someone else waters greys out on your screen while
--- you are looking at it.
+-- Live updates, so a plant someone else waters greys out while you watch.
 do $$
 begin
   if not exists (
@@ -436,14 +398,9 @@ begin
   end if;
 end $$;
 
--- ------------------------------------------------------- הגדרות השרת -------
---
--- המפתחות של ההתראות והסוד של המשימה היומית. הטבלה הזאת חסומה לחלוטין
--- למשתמשים: יש בה RLS בלי אף מדיניות, מה שאומר שאף אחד שנכנס לאפליקציה לא
--- יכול לקרוא ממנה. רק הפונקציות בצד השרת, שרצות עם מפתח service_role,
--- ניגשות אליה.
---
--- זאת הסיבה שאין צורך להגדיר סודות בלוח הבקרה של Supabase בכלל.
+-- הגדרות השרת --
+-- RLS בלי אף מדיניות = אף משתמש לא קורא מכאן; רק השרת, עם service_role.
+-- לכן אין צורך להגדיר שום סוד בלוח הבקרה של Supabase.
 
 create table if not exists public.app_config (
   id                boolean primary key default true check (id),
@@ -451,9 +408,7 @@ create table if not exists public.app_config (
   vapid_private_key text not null,
   vapid_subject     text not null,
   functions_url     text not null,
-  -- נוצר אוטומטית. אף אחד לא צריך לראות אותו או להעתיק אותו.
-  -- gen_random_uuid קיים בליבה של Postgres, כך שאין כאן תלות בהרחבה
-  -- כלשהי ולא בסדר של search_path.
+  -- נוצר אוטומטית; אף אחד לא מקליד אותו.
   cron_secret       text not null
     default replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '')
 );
@@ -475,8 +430,8 @@ on conflict (id) do update set
   vapid_subject     = excluded.vapid_subject,
   functions_url     = excluded.functions_url;
 
--- בדיקת שפיות: אם שכחו למלא את הערכים למעלה, עדיף להיכשל כאן ובקול רם
--- מאשר לגלות בעוד שבוע שההתראות פשוט לא הגיעו.
+-- אם שכחו למלא את הערכים למעלה - עדיף להיכשל כאן מאשר לגלות בעוד שבוע
+-- שההתראות פשוט לא הגיעו.
 do $$
 declare
   cfg public.app_config;
@@ -489,15 +444,12 @@ begin
   end if;
 end $$;
 
--- ------------------------------------------------- המשימה היומית -----------
---
--- pg_cron מעיר את הפונקציה כל רבע שעה, והיא בודקת למי הגיעה שעת התזכורת.
--- זה לא אומר 96 התראות ביום: כל אדם מקבל לכל היותר אחת, וזה נאכף על ידי
--- המפתח הראשי של notification_log ולא על ידי תקווה שהתזמון יתנהג יפה.
+-- המשימה היומית --
+-- pg_cron מעיר את הפונקציה כל רבע שעה והיא בודקת למי הגיעה שעת התזכורת.
+-- לא 96 התראות ביום: המפתח הראשי של notification_log מגביל לאחת לאדם ליום.
 
--- Supabase מתקין את ההרחבות האלה בסכימת extensions, אבל לא בכל גרסה של
--- Postgres אפשר להעביר אותן לשם. מנסים קודם את הדרך של Supabase ואז את
--- הרגילה, כדי שהסקריפט יעבוד בשני המקרים וגם אם ההרחבה כבר מותקנת.
+-- Supabase שם אותן ב-extensions, אבל לא כל גרסה מרשה להעביר אותן לשם.
+-- מנסים את שתי הדרכים, וגם אם ההרחבה כבר מותקנת.
 do $$
 begin
   begin
@@ -531,8 +483,7 @@ begin
   end if;
 end $$;
 
--- הכתובת והסוד נקראים מהטבלה בזמן ריצה ולא נשמרים בתוך הגדרת המשימה, כך
--- שהחלפת הסוד היא UPDATE אחד ולא תזמון מחדש.
+-- הכתובת והסוד נקראים מהטבלה בזמן ריצה, כך שהחלפת סוד היא UPDATE אחד.
 select cron.schedule(
   'plantshare-reminders',
   '*/15 * * * *',
@@ -549,11 +500,7 @@ select cron.schedule(
   $job$
 );
 
--- אחרי ההרצה כדאי לראות שהמשימה נרשמה:
---   select jobname, schedule, active from cron.job;
--- ולראות מה קרה בהרצות האחרונות:
---   select status, return_message, start_time
---   from cron.job_run_details order by start_time desc limit 10;
+-- לבדיקה: select jobname, schedule, active from cron.job;
 
 do $$
 begin
