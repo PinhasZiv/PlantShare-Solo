@@ -1,85 +1,133 @@
-# PlantShare — גרסה עצמאית
+# PlantShare
 
-אפליקציית תזכורות להשקיית צמחים שעובדת לגמרי על הטלפון. אין חשבון גוגל, אין
-Firebase, אין שרת, אין הרשמה. כל המידע יושב בקובץ אחד בזיכרון הפרטי של האפליקציה.
+A shared watering list for the plants in a house. One person waters the basil,
+everyone else can see it is done.
 
-## מה השתנה מהגרסה הקודמת
+It is a web app — a PWA — that installs to the Android home screen and behaves
+like any other app: an icon, its own window, and a notification every evening
+when something needs water. There is no APK to pass around; you invite someone
+by sending them a link.
 
-**ירד:** התחברות עם גוגל, מרחבים משותפים, קודי הצטרפות, סנכרון בין משתמשים.
-**נשאר:** רשימת צמחים, תקופת השקיה לכל צמח, תזכורת יומית בשעה שתבחר, סימון
-"הושקה", אזהרות איחור עד 3 ימים, והתנהגות היום־מול־מחר.
-**נוסף:** גיבוי ידני (ייצוא/ייבוא), כי בלי ענן אין רשת ביטחון.
+## What it does
 
-**חשוב:** בלי ענן, אם הטלפון אובד או שמוחקים את האפליקציה — הרשימה נעלמת.
-לכן יש כפתור **Export** בהגדרות ששולח את כל הנתונים כטקסט (לוואטסאפ, למייל,
-לכל מקום). כדאי לעשות את זה פעם בחודש.
+- **Plants** have a name and a watering period in days. Add them by hand.
+- **Spaces** hold a plant list and the people who share it. Join with a
+  six-character code. One person can belong to several spaces.
+- **One notification a day**, at a time each person picks for themselves. It
+  arrives whether or not anyone has opened the app recently.
+- **Tapping the notification** opens the list of what needs water tonight.
+- **Marking a plant watered** restarts its countdown from that day. Anyone in
+  the space can do it.
+- **The same-evening rule.** A plant someone already watered stays on the list
+  for the rest of that evening, marked done and with their name on it, so a
+  second person opening the app can see it was handled. The next day it is gone
+  from the list entirely, until it is due again.
+- **Late warnings** on day 1, 2 and 3 past due, each more insistent than the
+  last. After the third the plant stays on the list but stops nagging.
 
-## למה זה גם קל יותר לבנייה
+## How the reminder works
 
-הבנייה כאן לא דורשת כלום מהשלבים הקודמים: אין `google-services.json`, אין
-צורך ב־SHA-1, אין keystore. גרסת ה־release חתומה במפתח ה־debug כדי שתוכל
-להתקין אותה ישירות. משמעות אחת: זו לא אפליקציה שאפשר להעלות ל־Google Play,
-אבל להתקנה על הטלפון שלך זה בדיוק מה שצריך.
-
-## בנייה בלי מחשב
-
-הכול דרך הדפדפן בטלפון, עם חשבון GitHub חינמי:
-
-1. פותחים חשבון ב־github.com ויוצרים **repository פרטי** חדש.
-2. נכנסים ל־**Codespaces** (כפתור Code ירוק → לשונית Codespaces → Create
-   codespace on main). זה פותח עורך קוד בדפדפן. החינמי נותן 60 שעות בחודש.
-3. מעלים את קובץ ה־ZIP: לחיצה ארוכה על החלק הריק בסייר הקבצים משמאל → Upload.
-4. בטרמינל שבתחתית המסך:
-   ```
-   unzip PlantShareSolo.zip
-   cd PlantShareSolo
-   git add . && git commit -m "first" && git push
-   ```
-5. ה־workflow שנמצא ב־`.github/workflows/build.yml` בונה את ה־APK אוטומטית
-   בכל push. עוברים ללשונית **Actions** ברפוזיטורי, נכנסים לריצה האחרונה,
-   ומורידים את **PlantShare-apk** מלמטה.
-6. מחלצים את ה־ZIP שהורדתם בטלפון ופותחים את קובץ ה־APK. אנדרואיד יבקש אישור
-   להתקנה ממקור לא מוכר — מאשרים פעם אחת.
-
-מהפעם הזו והלאה כל שינוי בקוד = push אחד, והאפליקציה נבנית בענן לבד.
-
-## איך הכללים עובדים
-
-- לכל צמח יש `periodDays` ו־`nextDueEpochDay`. התאריכים נשמרים כמספר ימים מאז
-  1970, לא כשעה מדויקת — צמח מיועד להשקיה **ביום**, לא ברגע מסוים.
-- **סימון "הושקה"** קובע את המועד הבא ל־היום + התקופה. הספירה מתחילה מהיום
-  שבו באמת השקית, כך שצמח שאיחרת בו לא נשאר תקוע מאחור לנצח.
-- **באותו ערב** הצמח עובר לקטגוריית "Done today" ונשאר גלוי.
-  **למחרת** הוא נעלם מהרשימה עד המועד הבא.
-- **אזהרות איחור** ביום 1, 2 ו־3 — האזהרות עולות בדחיפות ומגיעות בערוץ
-  התראות נפרד. אחרי היום השלישי הצמח נשאר ברשימה אבל מפסיק להתריע.
-  לשינוי: `Due.MAX_LATE_WARNINGS`.
-- **ביטול**: אחרי סימון מופיע Snackbar עם Undo שמחזיר את המצב הקודם.
-
-## מבנה הפרויקט
+A web app cannot wake itself up. A service worker only runs when a push message
+arrives, so the daily timer lives on the server rather than on the phone:
 
 ```
-app/src/main/java/com/plantshare/solo/
-  data/
-    Models.kt        הצמח והמרה ל־JSON
-    Due.kt           כל לוגיקת התאריכים, פונקציות טהורות
-    PlantStore.kt    קריאה/כתיבה לקובץ, עם עותק גיבוי
-    SettingsStore.kt שעת התזכורת
-  work/
-    ReminderScheduler.kt  קובע את ההתעוררות היומית היחידה
-    DailyReminderWorker.kt  הבדיקה היומית, ואז קביעת מחר
-    BootReceiver.kt       חידוש אחרי אתחול או שינוי אזור זמן
-  notif/Notifications.kt
-  ui/                  מסכי Compose
+pg_cron (every 15 min)
+   -> send-reminders Edge Function
+        for each person whose reminder time just passed:
+          claim the day in notification_log  (the duplicate guard)
+          work out what is due across their spaces
+          push to their devices
+             -> service worker shows the notification
+                  -> tap -> opens the app on Tonight
 ```
 
-`Due.kt` מכיל את כל כללי התאריכים ויש לו בדיקות יחידה ב־`app/src/test`.
-מריצים עם `./gradlew test` — לא צריך אמולטור ולא צריך רשת.
+Each person gets at most one notification per day. That is enforced by a primary
+key on `(user_id, local_date)`, not by trusting the schedule — two overlapping
+cron runs race on the insert and exactly one wins.
 
-## מגבלות ידועות
+Running the timer server-side has a side benefit over doing it on the device:
+the reminder still fires for someone who has not opened the app in weeks, and
+Android's battery optimiser cannot suppress it.
 
-- הבדיקה היומית נקבעת דרך WorkManager, שהוא מקורב בכוונה. צפה לתזכורת בטווח
-  של כמה דקות מהשעה שבחרת. התראה מדויקת דורשת הרשאת `SCHEDULE_EXACT_ALARM`
-  שגוגל מגבילה לאפליקציות שעון מעורר.
-- אין השקיה לפי שעה — התקופה היא בימים שלמים, בהתאם לרעיון של "סבב ערב אחד".
-- הממשק באנגלית. אם תרצה אותו בעברית עם פריסת RTL מלאה, זה שינוי קטן.
+## Dates, not timestamps
+
+A plant is watered on an evening, not at an instant, so every date in the schema
+is a `date` and all the arithmetic is in whole days. This is why a daylight
+saving change cannot silently skip or repeat a watering, and why "today" is
+computed in each person's own timezone and passed in by whoever is acting.
+
+The rules themselves live in one file,
+[`supabase/functions/_shared/due.ts`](supabase/functions/_shared/due.ts), which
+is imported by both the React app and the reminder function — so the badge on
+screen and the text in the notification cannot disagree. It is pure functions
+over `YYYY-MM-DD` strings, and it is the part with real test coverage.
+
+## Getting it running
+
+See **[SETUP.md](SETUP.md)**. Three free accounts, no credit card, about 30
+minutes. The short version:
+
+1. Create a Supabase project, run `supabase/migrations/0001_init.sql`.
+2. Enable Google sign-in (a Google Cloud OAuth client, pasted into Supabase).
+3. `npm run vapid` for the notification keys.
+4. Put the keys in GitHub repository variables and Supabase function secrets.
+5. Push to `main` — GitHub Actions builds the app to Pages and deploys the
+   functions.
+6. Run `supabase/cron.sql` to schedule the daily check.
+
+## Working on it
+
+```bash
+npm install
+cp .env.example .env.local   # fill in your Supabase details
+npm run dev
+npm test                     # watering rules and push encryption
+npm run typecheck
+```
+
+`npm test` needs no network, no database and no browser.
+
+## Layout
+
+```
+src/
+  lib/
+    due.ts        re-export of the shared watering rules
+    api.ts        every database call the screens make
+    push.ts       permission, subscription, and the several ways it can fail
+    supabase.ts   client, and whether the build was configured at all
+  state/AppState.tsx   session, spaces, plants, and the realtime subscription
+  components/          screens and the pieces they share
+supabase/
+  migrations/0001_init.sql   tables, row-level security, and the RPCs
+  cron.sql                   schedules the daily check
+  functions/
+    _shared/due.ts       the watering rules (source of truth)
+    _shared/webpush.ts   RFC 8291 push encryption on Web Crypto
+    send-reminders/      the daily job
+    send-test/           the "send me a test notification" button
+```
+
+## Security
+
+Every table has row-level security, and the policies are the only access
+control — the client filters nothing itself. You can read a space only if you
+are a member of it; you can read a profile only if you share a space with that
+person; you can read your own push subscriptions and nobody else's. Joining a
+space goes through a `SECURITY DEFINER` function precisely because the joiner
+cannot see the space yet, which is the point.
+
+The reminder function is not protected by a user session — pg_cron does not have
+one — so it checks a shared secret header instead, and it is the only thing in
+the project that uses the service-role key.
+
+## Known limits
+
+- **Android and desktop only, in practice.** iOS supports web push from 16.4,
+  but only after the page is added to the home screen; nothing here prevents it
+  working, it is just not what this was built and tested for.
+- **Delivery is within an hour of the time you set**, not to the minute. The
+  cron runs every 15 minutes and the function accepts a 60-minute window so a
+  slow run or a cold start cannot cause a silent miss.
+- **Whole days only.** No "water at 6am and again at 6pm".
+- **The interface is in English.**
