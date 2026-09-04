@@ -10,6 +10,14 @@ name: Apply Supabase migration
 # Supabase's database or management API directly - only a small fixed
 # allowlist of hosts is reachable from there. GitHub-hosted runners have no
 # such restriction, so the migration runs here instead.
+#
+# The two PASTE_... placeholders in the committed file are never filled in
+# here with a text edit - they are substituted into a scratch copy from
+# repository secrets, at run time, and the substituted copy is discarded when
+# the job ends. The committed file itself must always keep saying
+# PASTE_PROJECT_REF_HERE and PASTE_VAPID_PRIVATE_KEY_HERE - that is also what
+# lets the same file still work for someone who prefers to paste it into the
+# Supabase SQL Editor by hand and fill those two lines in themselves.
 
 on:
   push:
@@ -28,16 +36,28 @@ jobs:
       - name: Check credentials
         env:
           DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+          PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
         run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "::error::Set SUPABASE_DB_URL as a repository secret - the pooler connection string from Supabase, with the real password substituted in. See SETUP.md."
+          if [ -z "$DATABASE_URL" ] || [ -z "$PROJECT_REF" ] || [ -z "$VAPID_PRIVATE_KEY" ]; then
+            echo "::error::Set SUPABASE_DB_URL, SUPABASE_PROJECT_REF and VAPID_PRIVATE_KEY as repository secrets. See SETUP.md."
             exit 1
           fi
 
       - name: Install postgresql-client
         run: sudo apt-get update -y -qq && sudo apt-get install -y -qq --no-install-recommends postgresql-client
 
+      - name: Substitute secrets into a scratch copy
+        env:
+          PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: |
+          sed \
+            -e "s|PASTE_PROJECT_REF_HERE|${PROJECT_REF}|" \
+            -e "s|PASTE_VAPID_PRIVATE_KEY_HERE|${VAPID_PRIVATE_KEY}|" \
+            supabase/migrations/0001_init.sql > "$RUNNER_TEMP/migration.sql"
+
       - name: Apply migration
         env:
           DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/0001_init.sql
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$RUNNER_TEMP/migration.sql"

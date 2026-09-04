@@ -106,26 +106,49 @@ Editor למשהו שצריך לעשות **פעם אחת בלבד**. אחרי ז�
 `supabase/migrations/0001_init.sql` (למשל כשמוסיפים פיצ'ר חדש) ירוץ מעצמו
 ברגע שהוא נדחף ל-`main` — בלי לפתוח את Supabase בכלל.
 
-1. ב-Supabase: **Project Settings** ← **Database** ← **Connection string**.
-2. לבחור בלשונית **Transaction** (pooler; היא זו שעובדת בלי בעיות מ-CI).
-3. להעתיק את המחרוזת המלאה. היא נראית כך, עם placeholder בשם הפרויקט:
+> ⚠️ **חשוב, לפני שממשיכים: אף פעם אל תמלאו את שני הערכים ישירות בקובץ
+> ותשמרו כך.** הרפוזיטורי הזה **ציבורי** — כל מה שנשמר בקובץ נשאר בהיסטוריה
+> של Git לצפייה של כל אחד, לצמיתות, גם אם מוחקים אותו בקומיט הבא. הקובץ
+> חייב להישאר עם `PASTE_PROJECT_REF_HERE` ו-`PASTE_VAPID_PRIVATE_KEY_HERE`
+> **תמיד**. הערכים האמיתיים נכנסים רק כסודות ב-GitHub (בהמשך השלב הזה),
+> והאוטומציה מזריקה אותם בזמן ריצה בלבד — הם אף פעם לא נכתבים לקובץ עצמו.
+> אם בטעות כן שמרתם ערך אמיתי בקובץ ודחפתם אותו: להחזיר את השורה
+> ל-placeholder זה לא מספיק — **צריך גם להחליף את הערך עצמו** (לדוגמה
+> ליצור זוג מפתחות VAPID חדש), כי הישן כבר חשוף.
+
+1. ב-Supabase, בעמוד הראשי של הפרויקט, לחפש כפתור בשם **Connect** (בדרך כלל
+   למעלה, ליד שם הפרויקט). אם הוא לא שם, לנסות **Project Settings** ←
+   **Database** — הניווט המדויק משתנה בין גרסאות של הממשק.
+2. בבחירת סוג החיבור: **Transaction pooler** (לא Direct connection —
+   Supabase עברו ל-IPv6 בחיבור הישיר, ו-GitHub Actions לא תמיד תומך בזה;
+   ה-pooler עוקף את זה).
+3. להעתיק את המחרוזת המלאה. היא נראית כך, עם placeholder בשם הסיסמה:
 
    ```
    postgresql://postgres.qskcwqknqwswqfnbmbxf:[YOUR-PASSWORD]@aws-0-....pooler.supabase.com:6543/postgres
    ```
 
+   אם אין כפתור כזה בשום מקום: אפשר לבנות את המחרוזת בעצמכם. ה-region
+   מופיע ב-**Project Settings** ← **General** (למשל `eu-central-1`), ואז:
+   `postgresql://postgres.qskcwqknqwswqfnbmbxf:<סיסמה>@aws-0-<region>.pooler.supabase.com:6543/postgres`
+
 4. להחליף את `[YOUR-PASSWORD]` בסיסמת מסד הנתונים האמיתית שלך (זו שנקבעה
    בשלב 1, או שאפשר לאפס אותה כאן אם היא לא בהישג יד — **Reset database
    password**).
 5. ב-GitHub: **Settings** ← **Secrets and variables** ← **Actions** ←
-   **Secrets** ← **New repository secret**:
+   **Secrets** ← **New repository secret**, פעמיים:
 
    | Name | Secret |
    |---|---|
    | `SUPABASE_DB_URL` | המחרוזת המלאה משלב 4, כולל הסיסמה האמיתית |
+   | `VAPID_PRIVATE_KEY` | המפתח הפרטי של ההתראות — אותו ערך שהיה נכנס לקובץ ידנית |
 
-זהו. הסוד יושב אצל GitHub בלבד — אף אחד, כולל אני, לא רואה אותו שוב אחרי
-השמירה, בדיוק כמו `SUPABASE_ACCESS_TOKEN` שכבר הגדרת. אפשר לוודא שזה עובד
+   (`SUPABASE_PROJECT_REF` כבר קיים אצלך כסוד מהעלאת הפונקציות בשלב 5 —
+   האוטומציה משתמשת בו גם כאן, אין צורך ליצור אותו שוב.)
+
+זהו. הסודות יושבים אצל GitHub בלבד — אף אחד, כולל אני, לא רואה אותם שוב
+אחרי השמירה. הם מוזרקים לקובץ רק ברגע הריצה, לתוך עותק זמני שנמחק בסוף
+הריצה — הקובץ שיושב ב-Git נשאר תמיד עם ה-placeholders. אפשר לוודא שזה עובד
 דרך לשונית **Actions** ← **Apply Supabase migration** ← **Run workflow**.
 
 ---

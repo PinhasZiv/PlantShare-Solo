@@ -13,13 +13,13 @@ language sql immutable as $$
   select
     -- ה-project ref: החלק שלפני supabase.co בכתובת הפרויקט.
     -- מ-https://abcdefghijklmnop.supabase.co כותבים abcdefghijklmnop
-    'qskcwqknqwswqfnbmbxf',
+    'PASTE_PROJECT_REF_HERE',
 
     -- המפתח הפרטי של ההתראות. קיבלת אותו יחד עם הקוד.
-    'Ict4VExu3HVckWc_EfPa_dSl3zSpizF37-6zWevAhNc',
+    'PASTE_VAPID_PRIVATE_KEY_HERE',
 
     -- מייל ליצירת קשר, לשירותי ההתראות. לא מוצג באפליקציה.
-    'piniziv8@gmail.com';
+    'plantshare@example.com';
 $$;
 
 --  ⬆️  מכאן והלאה אין מה לשנות  ⬆️
@@ -434,7 +434,7 @@ revoke all on public.app_config from anon, authenticated;
 insert into public.app_config (id, vapid_public_key, vapid_private_key, vapid_subject, functions_url)
 select
   true,
-  'BAWb5UI23OgtJM1NY3kNB21M92VrFOYu7RKFW3A30ZBDc1jM1MrgPsDYBsRSJhMlbClvlbVlKkjJmt3PN6Er2ns',
+  'BDJiNMmEeXk34oQvE1RjsVvlHjeJxM1aBKBhAwj2Idk9ePLvmCqcHT27VIkVh_roDRlE2JTgHCiffN4joeAXqjc',
   v.vapid_private_key,
   'mailto:' || v.contact_email,
   'https://' || v.project_ref || '.supabase.co/functions/v1/send-reminders'

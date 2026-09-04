@@ -31,7 +31,7 @@ export const SUPABASE_ANON_KEY = 'sb_publishable_UasoX0Oftpo4lsUrOxY4ZA_o8yYMxwy
  * בקוד. שינוי של המפתח הזה מבטל את כל המנויים הקיימים להתראות.
  */
 export const VAPID_PUBLIC_KEY =
-  'BAWb5UI23OgtJM1NY3kNB21M92VrFOYu7RKFW3A30ZBDc1jM1MrgPsDYBsRSJhMlbClvlbVlKkjJmt3PN6Er2ns'
+  'BDJiNMmEeXk34oQvE1RjsVvlHjeJxM1aBKBhAwj2Idk9ePLvmCqcHT27VIkVh_roDRlE2JTgHCiffN4joeAXqjc'
 
 /** נשאר false עד שממלאים את שני הערכים למעלה. */
 export const isConfigured =

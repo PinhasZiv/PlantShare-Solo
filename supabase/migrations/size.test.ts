@@ -38,11 +38,25 @@ describe('the setup script fits in the Supabase SQL editor', () => {
     expect(Buffer.byteLength(migration, 'utf8')).toBeGreaterThan(migration.length)
   })
 
-  it('still contains the placeholders a person has to fill in', () => {
-    // A trim that removed these would leave the script running with nonsense
-    // values instead of failing loudly.
-    expect(migration).toContain('PASTE_PROJECT_REF_HERE')
-    expect(migration).toContain('PASTE_VAPID_PRIVATE_KEY_HERE')
+  it('never carries a real project ref or VAPID key - only the placeholders', () => {
+    // This is the file both a person pastes into the Supabase SQL Editor by
+    // hand AND the one .github/workflows/migrate.yml runs automatically
+    // against the live database. The repo is public, so committing a real
+    // value here - even once, even reverted in a later commit - leaks it into
+    // git history permanently. The automated workflow injects the real values
+    // from repository secrets into a scratch copy at run time; the file
+    // itself must never see them.
+    const message =
+      'This file must only ever contain PASTE_PROJECT_REF_HERE and ' +
+      'PASTE_VAPID_PRIVATE_KEY_HERE as literal text - never a real value. ' +
+      'The repo is public: a committed secret leaks into git history ' +
+      'permanently, even after being reverted. Real values belong only in ' +
+      'GitHub repository secrets (SUPABASE_PROJECT_REF, VAPID_PRIVATE_KEY), ' +
+      'which .github/workflows/migrate.yml substitutes at run time. If a ' +
+      'real value was committed, rotate it - reverting the file is not ' +
+      'enough.'
+    expect(migration, message).toContain('PASTE_PROJECT_REF_HERE')
+    expect(migration, message).toContain('PASTE_VAPID_PRIVATE_KEY_HERE')
   })
 
   it('keeps the guard that catches an unfilled placeholder', () => {
