@@ -1,8 +1,5 @@
--- ========================================
---  PlantShare - התקנה מלאה בהרצה אחת.
---  ממלאים שני ערכים בבלוק שלמטה ולוחצים Run. בטוח להריץ שוב.
---  הסבר מלא על המבנה נמצא ב-README.
--- ========================================
+-- PlantShare - התקנה מלאה בהרצה אחת. בטוח להריץ שוב.
+-- ממלאים שני ערכים בבלוק שלמטה ולוחצים Run. הסבר על המבנה ב-README.
 
 -- ⬇️  שני הערכים שצריך למלא  ⬇️
 
@@ -439,7 +436,9 @@ select
   'mailto:' || v.contact_email,
   'https://' || v.project_ref || '.supabase.co/functions/v1/send-reminders'
 from private_setup.values() v
+-- שני חצאי המפתח חייבים להתעדכן יחד: זוג לא תואם = כל ההתראות נדחות.
 on conflict (id) do update set
+  vapid_public_key  = excluded.vapid_public_key,
   vapid_private_key = excluded.vapid_private_key,
   vapid_subject     = excluded.vapid_subject,
   functions_url     = excluded.functions_url;
@@ -471,7 +470,7 @@ begin
 exception when others then
   raise exception using
     message = 'לא הצלחתי להתקין את pg_cron',
-    hint = 'צריך להפעיל אותה ידנית: Supabase → Database → Extensions → pg_cron, ואז להריץ את הסקריפט שוב.';
+    hint = 'להפעיל ידנית: Supabase → Database → Extensions → pg_cron, ואז להריץ שוב.';
 end $$;
 
 do $$
@@ -484,7 +483,7 @@ begin
 exception when others then
   raise exception using
     message = 'לא הצלחתי להתקין את pg_net',
-    hint = 'צריך להפעיל אותה ידנית: Supabase → Database → Extensions → pg_net, ואז להריץ את הסקריפט שוב.';
+    hint = 'להפעיל ידנית: Supabase → Database → Extensions → pg_net, ואז להריץ שוב.';
 end $$;
 
 do $$

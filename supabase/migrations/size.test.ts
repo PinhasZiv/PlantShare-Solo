@@ -14,10 +14,9 @@ import { describe, expect, it } from 'vitest'
 const HARD_LIMIT = 20_000
 const BUDGET = 19_000
 
-const migration = readFileSync(
-  join(import.meta.dirname ?? __dirname, '0001_init.sql'),
-  'utf8',
-)
+const here = import.meta.dirname ?? __dirname
+const migration = readFileSync(join(here, '0001_init.sql'), 'utf8')
+const config = readFileSync(join(here, '..', '..', 'src', 'config.ts'), 'utf8')
 
 describe('the setup script fits in the Supabase SQL editor', () => {
   it(`is under ${BUDGET.toLocaleString()} characters`, () => {
@@ -61,5 +60,43 @@ describe('the setup script fits in the Supabase SQL editor', () => {
 
   it('keeps the guard that catches an unfilled placeholder', () => {
     expect(migration).toContain("like 'PASTE_%'")
+  })
+
+  it('holds the same VAPID public key the app subscribes with', () => {
+    // The two halves of the VAPID key pair live apart: the public half is
+    // committed twice - here, and in src/config.ts, which is what the browser
+    // subscribes with - while the private half only ever reaches the database
+    // from a repository secret. Nothing at run time compares them, and a
+    // mismatch does not fail anywhere visible: the push service simply
+    // rejects every notification, because the JWT is signed by one key and
+    // advertises another. That is what happened once already, when a key
+    // rotation updated the private half of app_config and left the public
+    // half behind. So the two committed copies are compared here instead.
+    const inConfig = config.match(/'(B[A-Za-z0-9_-]{80,})'/)?.[1]
+    const inMigration = migration.match(/'(B[A-Za-z0-9_-]{80,})'/)?.[1]
+    expect(inConfig, 'no VAPID public key found in src/config.ts').toBeTruthy()
+    expect(inMigration, 'no VAPID public key found in 0001_init.sql').toBeTruthy()
+    expect(
+      inMigration,
+      'The VAPID public key in supabase/migrations/0001_init.sql does not ' +
+        'match the one in src/config.ts. Both copies must be the public half ' +
+        'of the same key pair - and of the pair whose private half is in the ' +
+        'VAPID_PRIVATE_KEY repository secret - or every push notification is ' +
+        'rejected. Rotating a key means changing all three together.',
+    ).toBe(inConfig)
+  })
+
+  it('updates both halves of the key pair together on a re-run', () => {
+    // "on conflict do update" is the path taken on every run after the first,
+    // which is the only path a rotation ever takes. Leaving the public key out
+    // of that list is silent: a fresh database is fine, an existing one keeps
+    // the old public key next to the new private one.
+    const clause = migration.slice(migration.indexOf('on conflict (id) do update set'))
+    expect(
+      clause,
+      'The app_config upsert must set vapid_public_key in its "on conflict ' +
+        'do update" list. Without it, a key rotation only reaches an existing ' +
+        'database halfway and every notification is rejected.',
+    ).toMatch(/vapid_public_key\s*=\s*excluded\.vapid_public_key/)
   })
 })
