@@ -1,0 +1,43 @@
+name: Apply Supabase migration
+
+# Runs supabase/migrations/0001_init.sql against the live database whenever it
+# changes on main. The script is written to be safely re-run - it never drops
+# existing data, only recreates its own tables/functions/policies - so
+# applying it automatically here is exactly as safe as pasting it into the
+# Supabase SQL Editor by hand, just without the manual step.
+#
+# This exists because the environment that edits this repo cannot reach
+# Supabase's database or management API directly - only a small fixed
+# allowlist of hosts is reachable from there. GitHub-hosted runners have no
+# such restriction, so the migration runs here instead.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - '.github/workflows/migrate.yml'
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check credentials
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Set SUPABASE_DB_URL as a repository secret - the pooler connection string from Supabase, with the real password substituted in. See SETUP.md."
+            exit 1
+          fi
+
+      - name: Install postgresql-client
+        run: sudo apt-get update -y -qq && sudo apt-get install -y -qq --no-install-recommends postgresql-client
+
+      - name: Apply migration
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/0001_init.sql

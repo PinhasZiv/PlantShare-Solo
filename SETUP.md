@@ -99,6 +99,35 @@ https://<שם המשתמש שלך ב-GitHub>.github.io/PlantShare-Solo/
 > אם מופיעה שגיאה על `pg_cron` או `pg_net`, צריך להפעיל אותן ידנית:
 > **Database** ← **Extensions**, לחפש את השם, להדליק, ואז להריץ שוב.
 
+### 2א. אוטומציה (חד-פעמי): שינויים עתידיים בקובץ הזה ירוצו לבד
+
+השלב הזה אופציונלי, אבל מומלץ: הוא היחיד שהופך את ה-**הרצה ידנית** ב-SQL
+Editor למשהו שצריך לעשות **פעם אחת בלבד**. אחרי זה, כל עדכון עתידי לקובץ
+`supabase/migrations/0001_init.sql` (למשל כשמוסיפים פיצ'ר חדש) ירוץ מעצמו
+ברגע שהוא נדחף ל-`main` — בלי לפתוח את Supabase בכלל.
+
+1. ב-Supabase: **Project Settings** ← **Database** ← **Connection string**.
+2. לבחור בלשונית **Transaction** (pooler; היא זו שעובדת בלי בעיות מ-CI).
+3. להעתיק את המחרוזת המלאה. היא נראית כך, עם placeholder בשם הפרויקט:
+
+   ```
+   postgresql://postgres.qskcwqknqwswqfnbmbxf:[YOUR-PASSWORD]@aws-0-....pooler.supabase.com:6543/postgres
+   ```
+
+4. להחליף את `[YOUR-PASSWORD]` בסיסמת מסד הנתונים האמיתית שלך (זו שנקבעה
+   בשלב 1, או שאפשר לאפס אותה כאן אם היא לא בהישג יד — **Reset database
+   password**).
+5. ב-GitHub: **Settings** ← **Secrets and variables** ← **Actions** ←
+   **Secrets** ← **New repository secret**:
+
+   | Name | Secret |
+   |---|---|
+   | `SUPABASE_DB_URL` | המחרוזת המלאה משלב 4, כולל הסיסמה האמיתית |
+
+זהו. הסוד יושב אצל GitHub בלבד — אף אחד, כולל אני, לא רואה אותו שוב אחרי
+השמירה, בדיוק כמו `SUPABASE_ACCESS_TOKEN` שכבר הגדרת. אפשר לוודא שזה עובד
+דרך לשונית **Actions** ← **Apply Supabase migration** ← **Run workflow**.
+
 ---
 
 ## שלב 3 — כניסה עם Google
