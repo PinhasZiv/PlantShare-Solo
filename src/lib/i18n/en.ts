@@ -72,6 +72,9 @@ export const en: Strings = {
     dueOn: (date: string) => `due: ${date}`,
     nextOn: (date: string) => `next: ${date}`,
     someoneElse: 'someone else',
+    undoWatering: 'Undo watering',
+    unwaterAria: (name: string) => `Undo watering ${name}`,
+    wateringUndone: (name: string) => `Undid watering ${name}.`,
   },
 
   plantForm: {
@@ -205,6 +208,7 @@ export const en: Strings = {
     noSuchCode: 'No space with that code. Check the letters and try again.',
     lastOwner:
       'You are the only owner of this space and there are other members in it. You can delete it for everyone, but not leave it without an owner.',
+    notYourWatering: 'Only the person who watered it can undo this.',
   },
 
   setup: {

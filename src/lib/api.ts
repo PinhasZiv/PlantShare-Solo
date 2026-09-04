@@ -146,8 +146,9 @@ export async function deletePlant(plantId: string): Promise<void> {
 }
 
 /**
- * Marks a plant watered today and starts its next period. Returns the event id
- * so the undo button has something to point at.
+ * Marks a plant watered today and starts its next period. There is no due-date
+ * check here on purpose - anyone in the space can water a plant early, which
+ * is exactly the "I can see it needs water right now" case.
  */
 export async function markWatered(plantId: string, today: string): Promise<WateringEvent> {
   const { data, error } = await supabase
@@ -157,9 +158,20 @@ export async function markWatered(plantId: string, today: string): Promise<Water
   return data as WateringEvent
 }
 
-export async function undoWatering(eventId: string): Promise<void> {
-  const { error } = await supabase.rpc('undo_watering', { p_event: eventId })
-  if (error) throw error
+/**
+ * Reverses a plant's most recent watering and returns the restored plant row.
+ * The database - not this function - is what actually enforces that only the
+ * person who watered it can undo it; a rejection here surfaces as the
+ * `not_your_watering` message from the RPC.
+ */
+export async function unwaterPlant(plantId: string): Promise<Plant> {
+  const { data, error } = await supabase.rpc('undo_last_watering', { p_plant: plantId }).single()
+  if (error) {
+    throw new Error(
+      error.message.includes('not_your_watering') ? t().errors.notYourWatering : error.message,
+    )
+  }
+  return data as Plant
 }
 
 /** Recent waterings for a plant, newest first. */

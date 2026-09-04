@@ -73,6 +73,9 @@ export const he = {
     dueOn: (date: string) => `יעד: ${date}`,
     nextOn: (date: string) => `הבא: ${date}`,
     someoneElse: 'מישהו אחר',
+    undoWatering: 'ביטול השקיה',
+    unwaterAria: (name: string) => `ביטול ההשקיה של ${name}`,
+    wateringUndone: (name: string) => `בוטלה ההשקיה של ${name}.`,
   },
 
   plantForm: {
@@ -202,6 +205,7 @@ export const he = {
     noSuchCode: 'אין מרחב עם הקוד הזה. כדאי לבדוק את האותיות ולנסות שוב.',
     lastOwner:
       'המרחב הזה מנוהל רק על ידך ויש בו עוד חברים. אפשר למחוק אותו לכולם, אבל לא לצאת ולהשאיר אותו בלי מנהל.',
+    notYourWatering: 'רק מי שהשקה את הצמח יכול לבטל את זה.',
   },
 
   setup: {

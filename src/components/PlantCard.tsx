@@ -3,7 +3,7 @@ import { classify } from '../lib/due'
 import { describePeriod, firstName, formatDate, relativeDay } from '../lib/format'
 import { useI18n, type Language } from '../lib/i18n'
 import type { Plant } from '../lib/types'
-import { CheckIcon, DropIcon } from './Icons'
+import { CheckIcon, DropIcon, UndoIcon } from './Icons'
 
 /** מי השקה: אני, מישהו אחר בשם, או שאף אחד עוד לא. */
 export type WateredBy = { kind: 'you' } | { kind: 'other'; name: string | null } | null
@@ -14,6 +14,12 @@ interface PlantCardProps {
   spaceName?: string
   wateredBy?: WateredBy
   onWater?: () => Promise<void>
+  /**
+   * מי שקורא לכרטיס מחליט אם להעביר את זה - בהתאם לכך שהצמח באמת הושקה על
+   * ידי מי שצופה עכשיו במסך. השרת אוכף את אותה בדיקה שוב בכל מקרה, אז כאן
+   * זו רק שאלה של מתי להציע את הפעולה, לא מי מורשה לבצע אותה.
+   */
+  onUnwater?: () => Promise<void>
   onOpen?: () => void
 }
 
@@ -28,6 +34,7 @@ export function PlantCard({
   spaceName,
   wateredBy,
   onWater,
+  onUnwater,
   onOpen,
 }: PlantCardProps) {
   const { t, language } = useI18n()
@@ -39,6 +46,16 @@ export function PlantCard({
     setBusy(true)
     try {
       await onWater()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function unwater() {
+    if (!onUnwater || busy) return
+    setBusy(true)
+    try {
+      await onUnwater()
     } finally {
       setBusy(false)
     }
@@ -94,6 +111,19 @@ export function PlantCard({
         >
           <DropIcon size={22} />
           <span>{busy ? '...' : t.plant.water}</span>
+        </button>
+      )}
+
+      {onUnwater && info.status === 'watered_today' && (
+        <button
+          type="button"
+          className="water-button water-button-muted"
+          onClick={unwater}
+          disabled={busy}
+          aria-label={t.plant.unwaterAria(plant.name)}
+        >
+          <UndoIcon size={20} />
+          <span>{busy ? '...' : t.plant.undoWatering}</span>
         </button>
       )}
     </article>

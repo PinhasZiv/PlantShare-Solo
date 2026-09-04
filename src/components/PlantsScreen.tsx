@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import * as api from '../lib/api'
 import { classify } from '../lib/due'
 import { useApp } from '../state/AppState'
+import { useWatering } from '../state/useWatering'
 import { PlantCard, wateredByLabel } from './PlantCard'
 import { PlantForm, type PlantDraft } from './PlantForm'
 import { PlusIcon } from './Icons'
@@ -13,6 +14,7 @@ import type { Plant } from '../lib/types'
 export function PlantsScreen() {
   const { plants, currentSpace, today, session, people, reload, patchPlant } = useApp()
   const { t, language } = useI18n()
+  const { water, unwater } = useWatering()
   const toast = useToast()
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<Plant | null>(null)
@@ -96,6 +98,10 @@ export function PlantsScreen() {
               plant={plant}
               today={today}
               wateredBy={wateredByLabel(plant, people, session?.user.id ?? null, language)}
+              onWater={() => water(plant)}
+              onUnwater={
+                plant.last_watered_by === session?.user.id ? () => unwater(plant) : undefined
+              }
               onOpen={() => setEditing(plant)}
             />
           ))}

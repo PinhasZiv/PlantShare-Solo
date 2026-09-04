@@ -222,7 +222,10 @@ code {
 
 .plant-late { border-inline-start: 4px solid var(--late); }
 .plant-due { border-inline-start: 4px solid var(--accent); }
-.plant-watered_today { opacity: 0.62; }
+/* Dims only the info side, not the whole card: a card that is "done" should
+   read as settled, but the button that fixes a mistaken tap still needs to be
+   fully legible and easy to hit. */
+.plant-watered_today .plant-main { opacity: 0.62; }
 
 .plant-main {
   flex: 1;
@@ -319,6 +322,11 @@ code {
 
 .water-button:disabled { opacity: 0.6; }
 .water-button:active { background: var(--accent); color: #fff; }
+
+/* The undo action on an already-watered card: present, but visibly secondary
+   next to the green primary action everywhere else on the screen. */
+.water-button-muted { background: var(--surface-2); color: var(--text-muted); }
+.water-button-muted:active { background: var(--border); color: var(--text); }
 
 /* ------------------------------------------------------------ buttons --- */
 

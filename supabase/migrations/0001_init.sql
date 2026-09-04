@@ -39,8 +39,7 @@ create table if not exists public.profiles (
   created_at      timestamptz not null default now()
 );
 
--- שפת הממשק. nullable בכוונה: ברירת מחדל הייתה דורסת את שפת הדפדפן.
--- נוספת ב-alter נפרד כדי שהסקריפט יעדכן גם מסד נתונים קיים.
+-- שפת הממשק. nullable כדי לא לדרוס את שפת הדפדפן; alter נפרד למסד קיים.
 alter table public.profiles
   add column if not exists language text check (language in ('he', 'en'));
 
@@ -283,7 +282,7 @@ begin
 end;
 $$;
 
--- SECURITY DEFINER: the joiner cannot read the space yet, which is the point.
+-- SECURITY DEFINER: the joiner cannot read the space yet - the point.
 create or replace function public.join_space_by_code(p_code text)
 returns public.spaces language plpgsql security definer set search_path = public as $$
 declare
@@ -308,7 +307,7 @@ begin
 end;
 $$;
 
--- Two writes that must not drift apart, so one function not two round trips.
+-- Two writes that must not drift, so one function, not two round trips.
 create or replace function public.mark_watered(p_plant uuid, p_today date)
 returns public.watering_events language plpgsql security definer set search_path = public as $$
 declare
@@ -344,26 +343,42 @@ begin
 end;
 $$;
 
-create or replace function public.undo_watering(p_event uuid)
-returns void language plpgsql security definer set search_path = public as $$
+-- Only whoever watered can undo - anyone may water early, so this guards
+-- identity, not timing.
+drop function if exists public.undo_watering(uuid);
+create or replace function public.undo_last_watering(p_plant uuid)
+returns public.plants language plpgsql security definer set search_path = public as $$
 declare
-  event public.watering_events;
+  target public.plants;
+  event  public.watering_events;
+  result public.plants;
 begin
-  select * into event from public.watering_events where id = p_event;
-  if event.id is null then
-    raise exception 'no_such_event' using errcode = 'P0002';
+  select * into target from public.plants where id = p_plant;
+  if target.id is null then
+    raise exception 'no_such_plant' using errcode = 'P0002';
   end if;
-  if not public.is_member(event.space_id) then
+  if not public.is_member(target.space_id) then
     raise exception 'not_a_member' using errcode = '42501';
+  end if;
+
+  select * into event from public.watering_events
+  where plant_id = p_plant order by created_at desc limit 1;
+  if event.id is null then
+    raise exception 'nothing_to_undo' using errcode = 'P0002';
+  end if;
+  if event.user_id <> auth.uid() then
+    raise exception 'not_your_watering' using errcode = '42501';
   end if;
 
   update public.plants
   set next_due_date     = event.prev_next_due_date,
       last_watered_date = event.prev_last_watered_date,
       last_watered_by   = event.prev_last_watered_by
-  where id = event.plant_id;
+  where id = event.plant_id
+  returning * into result;
 
   delete from public.watering_events where id = event.id;
+  return result;
 end;
 $$;
 
@@ -399,8 +414,7 @@ begin
 end $$;
 
 -- הגדרות השרת --
--- RLS בלי אף מדיניות = אף משתמש לא קורא מכאן; רק השרת, עם service_role.
--- לכן אין צורך להגדיר שום סוד בלוח הבקרה של Supabase.
+-- RLS בלי מדיניות = חסום לכולם חוץ מ-service_role; לכן אין סודות ב-Supabase.
 
 create table if not exists public.app_config (
   id                boolean primary key default true check (id),
@@ -414,7 +428,7 @@ create table if not exists public.app_config (
 );
 
 alter table public.app_config enable row level security;
--- ללא מדיניות = אין גישה לאף משתמש. service_role עוקף RLS ולכן כן קורא.
+-- ללא מדיניות = חסום לכולם; service_role עוקף RLS וכן קורא.
 revoke all on public.app_config from anon, authenticated;
 
 insert into public.app_config (id, vapid_public_key, vapid_private_key, vapid_subject, functions_url)
@@ -430,8 +444,7 @@ on conflict (id) do update set
   vapid_subject     = excluded.vapid_subject,
   functions_url     = excluded.functions_url;
 
--- אם שכחו למלא את הערכים למעלה - עדיף להיכשל כאן מאשר לגלות בעוד שבוע
--- שההתראות פשוט לא הגיעו.
+-- אם הערכים למעלה נשארו ריקים, עדיף להיכשל כאן מאשר בעוד שבוע.
 do $$
 declare
   cfg public.app_config;
@@ -445,11 +458,9 @@ begin
 end $$;
 
 -- המשימה היומית --
--- pg_cron מעיר את הפונקציה כל רבע שעה והיא בודקת למי הגיעה שעת התזכורת.
--- לא 96 התראות ביום: המפתח הראשי של notification_log מגביל לאחת לאדם ליום.
+-- pg_cron מעיר כל רבע שעה; מפתח notification_log מגביל לתזכורת אחת ליום.
 
--- Supabase שם אותן ב-extensions, אבל לא כל גרסה מרשה להעביר אותן לשם.
--- מנסים את שתי הדרכים, וגם אם ההרחבה כבר מותקנת.
+-- Supabase שם אותן ב-extensions; לא כל גרסה מרשה, אז מנסים גם בלעדיה.
 do $$
 begin
   begin
@@ -483,7 +494,7 @@ begin
   end if;
 end $$;
 
--- הכתובת והסוד נקראים מהטבלה בזמן ריצה, כך שהחלפת סוד היא UPDATE אחד.
+-- הכתובת והסוד נקראים בזמן ריצה, כך שהחלפה היא UPDATE אחד.
 select cron.schedule(
   'plantshare-reminders',
   '*/15 * * * *',

@@ -1,8 +1,7 @@
 import { useMemo } from 'react'
-import { addDays, classify } from '../lib/due'
-import * as api from '../lib/api'
+import { classify } from '../lib/due'
 import { useApp } from '../state/AppState'
-import { useToast } from './Toast'
+import { useWatering } from '../state/useWatering'
 import { PlantCard, wateredByLabel } from './PlantCard'
 import { formatDate } from '../lib/format'
 import { useI18n, type Language, type Strings } from '../lib/i18n'
@@ -15,9 +14,9 @@ import type { Plant } from '../lib/types'
  * רשימה שהראתה רק את המרחב הנבחר הייתה סותרת את ההתראה שהובילה לכאן.
  */
 export function TonightScreen({ onManagePlants }: { onManagePlants: () => void }) {
-  const { plants, spaces, people, today, session, patchPlant, reload } = useApp()
+  const { plants, spaces, people, today, session } = useApp()
   const { t, language } = useI18n()
-  const toast = useToast()
+  const { water, unwater } = useWatering()
   const selfId = session?.user.id ?? null
 
   const groups = useMemo(() => {
@@ -44,40 +43,6 @@ export function TonightScreen({ onManagePlants }: { onManagePlants: () => void }
   const showSpaceNames = spaces.length > 1
 
   const remaining = groups.late.length + groups.due.length
-
-  async function water(plant: Plant) {
-    // אופטימי: הלחיצה צריכה להרגיש מיידית גם בחיבור איטי. אם הכתיבה נכשלת
-    // אנחנו טוענים מחדש, וזה מחזיר את המצב האמיתי.
-    const previous = { ...plant }
-    patchPlant({
-      ...plant,
-      last_watered_date: today,
-      last_watered_by: selfId,
-      next_due_date: addDays(today, plant.period_days),
-    })
-
-    try {
-      const event = await api.markWatered(plant.id, today)
-      toast.show(t.tonight.watered(plant.name), {
-        action: {
-          label: t.common.undo,
-          run: async () => {
-            try {
-              await api.undoWatering(event.id)
-              patchPlant(previous)
-            } catch (cause) {
-              toast.showError(cause)
-              void reload()
-            }
-          },
-        },
-      })
-    } catch (cause) {
-      patchPlant(previous)
-      toast.showError(cause)
-      void reload()
-    }
-  }
 
   if (plants.length === 0) {
     return (
@@ -146,6 +111,7 @@ export function TonightScreen({ onManagePlants }: { onManagePlants: () => void }
               today={today}
               spaceName={showSpaceNames ? spaceNames.get(plant.space_id) : undefined}
               wateredBy={wateredByLabel(plant, people, selfId, language)}
+              onUnwater={plant.last_watered_by === selfId ? () => unwater(plant) : undefined}
             />
           ))}
         </section>
