@@ -180,11 +180,7 @@ https://<שם המשתמש שלך ב-GitHub>.github.io/PlantShare-Solo/
 
 ## שלב 5 — העלאת האפליקציה והפונקציות
 
-### 5א. הפעלת GitHub Pages
-
-**Settings** ← **Pages** ← תחת **Source** לבחור **GitHub Actions**. זה הכול.
-
-### 5ב. שני סודות להעלאת הפונקציות
+### 5א. סוד להעלאת הפונקציות
 
 **Settings** ← **Secrets and variables** ← **Actions** ← לשונית **Secrets** ←
 **New repository secret**, פעמיים:
@@ -194,15 +190,24 @@ https://<שם המשתמש שלך ב-GitHub>.github.io/PlantShare-Solo/
 | `SUPABASE_ACCESS_TOKEN` | נוצר ב-[supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens) ← **Generate new token**. מוצג פעם אחת בלבד |
 | `SUPABASE_PROJECT_REF` | ה-project ref משלב 1 |
 
-### 5ג. הרצה
+### 5ב. הרצה
 
 לשונית **Actions** ← אם אין ריצה שרצה מעצמה, בוחרים **Build and deploy** ←
 **Run workflow**. עושים אותו דבר ל-**Deploy Supabase functions**.
 
-כששתי הריצות ירוקות, האפליקציה חיה בכתובת שלה.
+כששתי הריצות ירוקות, האפליקציה חיה בכתובת שלה. **GitHub Pages** נדלק לבד
+בריצה הראשונה — אין צורך ללחוץ על שום דבר ב-Settings בשביל זה.
 
 > הפריסה עוקבת אחרי הענף `main`. אם העבודה נמצאת בענף אחר, צריך למזג אותו
 > ל-`main` (Pull request ← Merge) כדי שהאתר יתעדכן.
+
+> **אם ריצת "Build and deploy" נכשלת בשלב `configure-pages` עם שגיאה על
+> Pages:** על חשבון חינמי, GitHub לא מאפשר Pages ברפוזיטורי **פרטי**. הפתרון
+> הפשוט ביותר: **Settings** ← גוללים למטה ל-**Danger Zone** ← **Change
+> visibility** ← **Make public**. אין בעיה של חשיפת סודות — שני הערכים
+> ב-`src/config.ts` נועדו מלכתחילה להיות פומביים (ראו ההערה שם), וה-RLS
+> במסד הנתונים הוא ההגנה האמיתית, לא הסתרת הקוד. מי שרוצה להשאיר את
+> הרפוזיטורי פרטי בכל זאת יכול לשדרג ל-GitHub Pro במקום.
 
 ---
 

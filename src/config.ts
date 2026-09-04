@@ -8,8 +8,16 @@
 //  איפה מוצאים אותם: Supabase → Project Settings → Data API
 // ============================================================================
 
-/** Project URL, למשל https://abcdefghijklmnop.supabase.co */
-export const SUPABASE_URL = 'https://qskcwqknqwswqfnbmbxf.supabase.co/rest/v1/'
+/**
+ * Project URL - הכתובת הבסיסית בלבד, בלי שום נתיב בסופה.
+ * למשל https://abcdefghijklmnop.supabase.co
+ *
+ * בדף Data API של Supabase יש שתי שורות דומות: "Project URL" למעלה, ומתחתיה
+ * "REST API URL" שכבר מסתיימת ב-/rest/v1/. מעתיקים את השורה הראשונה בלבד -
+ * supabase-js מוסיף את הנתיבים בעצמו, וכתובת עם /rest/v1/ בסוף שוברת גם את
+ * ההתחברות וגם את כל הקריאות למסד הנתונים.
+ */
+export const SUPABASE_URL = 'https://qskcwqknqwswqfnbmbxf.supabase.co'
 
 /** המפתח הציבורי (anon / publishable), מתחיל ב-eyJ או ב-sb_publishable_ */
 export const SUPABASE_ANON_KEY = 'sb_publishable_UasoX0Oftpo4lsUrOxY4ZA_o8yYMxwy'

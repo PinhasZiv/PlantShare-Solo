@@ -57,6 +57,15 @@ jobs:
           npm run build
 
       - uses: actions/configure-pages@v5
+        with:
+          # actions/configure-pages defaults this to false. Without it, the
+          # action only reads the existing Pages configuration and fails with
+          # a 404 the first time - a repo's Pages site has to already exist,
+          # which normally means a manual Settings -> Pages -> Source:
+          # GitHub Actions click before the very first deploy. Setting this
+          # true lets the action create that site itself, so nothing has to
+          # be done by hand in the GitHub UI at all.
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
