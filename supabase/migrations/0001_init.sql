@@ -13,13 +13,13 @@ language sql immutable as $$
   select
     -- ה-project ref: החלק שלפני supabase.co בכתובת הפרויקט.
     -- מ-https://abcdefghijklmnop.supabase.co כותבים abcdefghijklmnop
-    'PASTE_PROJECT_REF_HERE',
+    'qskcwqknqwswqfnbmbxf',
 
     -- המפתח הפרטי של ההתראות. קיבלת אותו יחד עם הקוד.
-    'PASTE_VAPID_PRIVATE_KEY_HERE',
+    'Ict4VExu3HVckWc_EfPa_dSl3zSpizF37-6zWevAhNc',
 
     -- מייל ליצירת קשר, לשירותי ההתראות. לא מוצג באפליקציה.
-    'plantshare@example.com';
+    'piniziv8@gmail.com';
 $$;
 
 --  ⬆️  מכאן והלאה אין מה לשנות  ⬆️
