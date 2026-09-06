@@ -13,7 +13,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { classify, minutesOfDayIn, todayIn } from '../_shared/due.ts'
 import { loadConfig } from '../_shared/config.ts'
 import { composeReminder, isLanguage, type Language } from '../_shared/messages.ts'
-import { sendPush } from '../_shared/webpush.ts'
+import { planSnoozeOutcomes, type ExpiredSnooze } from '../_shared/snoozeResend.ts'
+import { sendPush, type PushTarget } from '../_shared/webpush.ts'
 
 interface Profile {
   id: string
@@ -33,12 +34,9 @@ interface Plant {
   last_watered_date: string | null
 }
 
-interface Subscription {
+interface Subscription extends PushTarget {
   id: string
   user_id: string
-  endpoint: string
-  p256dh: string
-  auth: string
   failure_count: number
 }
 
@@ -50,6 +48,40 @@ const admin = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
   { auth: { persistSession: false } },
 )
+
+/**
+ * Sends one push to every one of a person's subscriptions, updating each
+ * subscription row the same way regardless of who called this - the daily
+ * reminder and a snoozed-plant resend both need identical bookkeeping on
+ * success, a dead endpoint, and a transient failure.
+ */
+async function pushToSubscriptions(
+  subs: Subscription[],
+  payload: unknown,
+  vapid: Parameters<typeof sendPush>[2],
+): Promise<number> {
+  let sent = 0
+  for (const sub of subs) {
+    const result = await sendPush(sub, payload, vapid)
+    if (result.ok) {
+      sent++
+      await admin
+        .from('push_subscriptions')
+        .update({ last_sent_at: new Date().toISOString(), failure_count: 0 })
+        .eq('id', sub.id)
+    } else if (result.gone) {
+      // The browser has forgotten this subscription; stop writing to it.
+      await admin.from('push_subscriptions').delete().eq('id', sub.id)
+    } else {
+      console.error('push failed', sub.endpoint.slice(0, 60), result.status, result.detail)
+      await admin
+        .from('push_subscriptions')
+        .update({ failure_count: sub.failure_count + 1 })
+        .eq('id', sub.id)
+    }
+  }
+  return sent
+}
 
 Deno.serve(async (request) => {
   const config = await loadConfig(admin)
@@ -112,11 +144,17 @@ Deno.serve(async (request) => {
   }
 
   const plantsBySpace = new Map<string, Plant[]>()
+  const plantsById = new Map<string, Plant>()
   for (const plant of (plants.data ?? []) as Plant[]) {
     const list = plantsBySpace.get(plant.space_id) ?? []
     list.push(plant)
     plantsBySpace.set(plant.space_id, list)
+    plantsById.set(plant.id, plant)
   }
+
+  const profilesById = new Map<string, Profile>(
+    ((profiles.data ?? []) as Profile[]).map((profile) => [profile.id, profile]),
+  )
 
   const spaceNames = new Map<string, string>(
     (spaces.data ?? []).map((s: { id: string; name: string }) => [s.id, s.name]),
@@ -196,24 +234,72 @@ Deno.serve(async (request) => {
       plantCount: duePlants.length,
     }
 
-    for (const sub of subs) {
-      const result = await sendPush(sub, payload, config.vapid)
-      if (result.ok) {
-        sentCount++
-        await admin
-          .from('push_subscriptions')
-          .update({ last_sent_at: new Date().toISOString(), failure_count: 0 })
-          .eq('id', sub.id)
-      } else if (result.gone) {
-        // The browser has forgotten this subscription; stop writing to it.
-        await admin.from('push_subscriptions').delete().eq('id', sub.id)
-      } else {
-        console.error('push failed', sub.endpoint.slice(0, 60), result.status, result.detail)
-        await admin
-          .from('push_subscriptions')
-          .update({ failure_count: sub.failure_count + 1 })
-          .eq('id', sub.id)
+    sentCount += await pushToSubscriptions(subs, payload, config.vapid)
+  }
+
+  // Snoozed plants whose timer has run out - independent of the once-a-day
+  // loop above, and of each person's reminder time, since a snooze is a
+  // promise to notify again at a specific moment, not at the next evening.
+  const nowIso = now.toISOString()
+  const expiredSnoozes = await admin
+    .from('plant_snoozes')
+    .select('plant_id, user_id')
+    .lte('snoozed_until', nowIso)
+  if (expiredSnoozes.error) {
+    console.error('loading expired snoozes failed', expiredSnoozes.error)
+  } else if (expiredSnoozes.data?.length) {
+    const expired: ExpiredSnooze[] = expiredSnoozes.data.map(
+      (row: { plant_id: string; user_id: string }) => ({ plantId: row.plant_id, userId: row.user_id }),
+    )
+    const outcomes = planSnoozeOutcomes(
+      expired,
+      plantsById,
+      (userId) => {
+        const profile = profilesById.get(userId)
+        return profile ? todayIn(profile.timezone, now) : null
+      },
+      (userId) => {
+        const profile = profilesById.get(userId)
+        return profile && isLanguage(profile.language) ? profile.language : 'he'
+      },
+    )
+
+    for (const outcome of outcomes) {
+      if (dryRun) {
+        report.push({ snoozeResend: outcome })
+        continue
       }
+
+      // Claim by deleting first: an atomic delete is the mutex against two
+      // overlapping cron runs both trying to resend the same snooze - only
+      // whichever request actually removes the row gets to act on it.
+      const claim = await admin
+        .from('plant_snoozes')
+        .delete()
+        .eq('plant_id', outcome.plantId)
+        .eq('user_id', outcome.userId)
+        .lte('snoozed_until', nowIso)
+        .select('plant_id')
+      if (!claim.data?.length) continue // another run already claimed it
+      if (outcome.kind === 'stale') continue // just needed clearing, nothing to send
+
+      const subs = subsByUser.get(outcome.userId)
+      if (!subs?.length) continue
+
+      const plant = plantsById.get(outcome.plantId)
+      sentCount += await pushToSubscriptions(
+        subs,
+        {
+          title: outcome.title,
+          body: outcome.body,
+          lang: outcome.language,
+          dir: outcome.language === 'he' ? 'rtl' : 'ltr',
+          tag: `plantshare-snooze-${outcome.plantId}`,
+          spaceId: plant?.space_id ?? null,
+          plantCount: 1,
+        },
+        config.vapid,
+      )
     }
   }
 

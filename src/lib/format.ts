@@ -1,4 +1,4 @@
-import { daysBetween } from './due'
+import { daysBetween, todayIn } from './due'
 import type { Language } from './i18n/types'
 
 // Numbers, dates and names, in whichever language is showing.
@@ -74,6 +74,28 @@ export function formatDate(isoDate: string, language: Language): string {
 
 export function formatTime(hour: number, minute: number): string {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+}
+
+/**
+ * "20:30" if the snooze ends later today, else "מחר 08:00" / "tomorrow
+ * 08:00" - whichever tells you fastest whether to expect it again tonight.
+ *
+ * The snooze instant was chosen against this device's own clock, so the
+ * calendar-day comparison uses this device's own timezone too, rather than
+ * `today` (the signed-in person's timezone) - the two agree except for
+ * someone actively traveling, which is not worth the extra plumbing to fix.
+ */
+export function formatSnoozeUntil(iso: string, today: string, language: Language): string {
+  const target = new Date(iso)
+  const time = target.toLocaleTimeString(LOCALES[language], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+  const deviceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const targetDay = todayIn(deviceTimezone, target)
+  if (targetDay === today) return time
+  return `${relativeDay(targetDay, today, language)} ${time}`
 }
 
 /** "פעם בשבוע" / "weekly" */

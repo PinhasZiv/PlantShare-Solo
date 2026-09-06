@@ -1,20 +1,23 @@
 name: Apply Supabase migration
 
-# Runs supabase/migrations/0001_init.sql against the live database whenever it
-# changes on main. The script is written to be safely re-run - it never drops
-# existing data, only recreates its own tables/functions/policies - so
-# applying it automatically here is exactly as safe as pasting it into the
-# Supabase SQL Editor by hand, just without the manual step.
+# Runs every supabase/migrations/NNNN_*.sql file, in order, against the live
+# database whenever one changes on main. Each one is written to be safely
+# re-run, on its own or as part of the whole set - none of them drop existing
+# data, only recreate their own tables/functions/policies - so applying them
+# automatically here is exactly as safe as pasting them into the Supabase SQL
+# Editor by hand, in the same order, just without the manual step. They are
+# always applied together, in filename order, every time any of them changes -
+# there is no per-file "already applied" tracking.
 #
 # This exists because the environment that edits this repo cannot reach
 # Supabase's database or management API directly - only a small fixed
 # allowlist of hosts is reachable from there. GitHub-hosted runners have no
 # such restriction, so the migration runs here instead.
 #
-# The two PASTE_... placeholders in the committed file are never filled in
-# here with a text edit - they are substituted into a scratch copy from
-# repository secrets, at run time, and the substituted copy is discarded when
-# the job ends. The committed file itself must always keep saying
+# The two PASTE_... placeholders in 0001_init.sql are never filled in here
+# with a text edit - they are substituted into a scratch copy from repository
+# secrets, at run time, and the substituted copy is discarded when the job
+# ends. The committed file itself must always keep saying
 # PASTE_PROJECT_REF_HERE and PASTE_VAPID_PRIVATE_KEY_HERE - that is also what
 # lets the same file still work for someone who prefers to paste it into the
 # Supabase SQL Editor by hand and fill those two lines in themselves.
@@ -47,17 +50,26 @@ jobs:
       - name: Install postgresql-client
         run: sudo apt-get update -y -qq && sudo apt-get install -y -qq --no-install-recommends postgresql-client
 
-      - name: Substitute secrets into a scratch copy
+      - name: Substitute secrets into scratch copies
         env:
           PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
         run: |
-          sed \
-            -e "s|PASTE_PROJECT_REF_HERE|${PROJECT_REF}|" \
-            -e "s|PASTE_VAPID_PRIVATE_KEY_HERE|${VAPID_PRIVATE_KEY}|" \
-            supabase/migrations/0001_init.sql > "$RUNNER_TEMP/migration.sql"
+          mkdir -p "$RUNNER_TEMP/migrations"
+          for file in supabase/migrations/*.sql; do
+            sed \
+              -e "s|PASTE_PROJECT_REF_HERE|${PROJECT_REF}|" \
+              -e "s|PASTE_VAPID_PRIVATE_KEY_HERE|${VAPID_PRIVATE_KEY}|" \
+              "$file" > "$RUNNER_TEMP/migrations/$(basename "$file")"
+          done
 
-      - name: Apply migration
+      - name: Apply migrations
         env:
           DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$RUNNER_TEMP/migration.sql"
+        run: |
+          # Sorted by filename, so 0001 always runs before 0002 and so on.
+          for file in "$RUNNER_TEMP"/migrations/*.sql; do
+            echo "::group::$(basename "$file")"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$file"
+            echo "::endgroup::"
+          done

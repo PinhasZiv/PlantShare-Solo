@@ -52,3 +52,16 @@ export interface WateringEvent {
   user_id: string
   watered_on: string
 }
+
+/**
+ * One person's personal deferral of one plant's reminder. Snoozing never
+ * touches the plant itself (next_due_date, last_watered_date) - it only
+ * suppresses this one person's notification and Tonight-screen nagging until
+ * `snoozed_until`, so someone else in the same space still sees the plant as
+ * due and gets their own reminder normally.
+ */
+export interface PlantSnooze {
+  plant_id: string
+  user_id: string
+  snoozed_until: string
+}

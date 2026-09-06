@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -9,34 +9,42 @@ import { describe, expect, it } from 'vitest'
 //
 // This test is here because that failure is invisible from the code: the file
 // is valid SQL, the tests pass, and it only breaks in someone else's browser
-// during setup. So the length is asserted rather than trusted.
+// during setup. So the length is asserted rather than trusted. Every migration
+// file is checked, not just the first one - migrate.yml applies each one
+// separately (see its own comment), and each is also meant to be pasted into
+// the SQL Editor by hand on its own, so each has to fit alone.
 
 const HARD_LIMIT = 20_000
 const BUDGET = 19_000
 
 const here = import.meta.dirname ?? __dirname
+const sqlFiles = readdirSync(here).filter((name) => name.endsWith('.sql')).sort()
 const migration = readFileSync(join(here, '0001_init.sql'), 'utf8')
 const config = readFileSync(join(here, '..', '..', 'src', 'config.ts'), 'utf8')
 
-describe('the setup script fits in the Supabase SQL editor', () => {
+describe.each(sqlFiles)('%s fits in the Supabase SQL editor', (name) => {
+  const contents = readFileSync(join(here, name), 'utf8')
+
   it(`is under ${BUDGET.toLocaleString()} characters`, () => {
-    const headroom = BUDGET - migration.length
+    const headroom = BUDGET - contents.length
     expect(
-      migration.length,
-      `The setup script is ${migration.length.toLocaleString()} characters, ` +
+      contents.length,
+      `${name} is ${contents.length.toLocaleString()} characters, ` +
         `${(-headroom).toLocaleString()} over the ${BUDGET.toLocaleString()} budget. ` +
         `Supabase silently truncates a pasted query at ${HARD_LIMIT.toLocaleString()} ` +
         `characters, so this has to come down - trim comments, or split the ` +
-        `script and update SETUP.md to say so.`,
+        `script further and update SETUP.md to say so.`,
     ).toBeLessThan(BUDGET)
   })
 
   it('measures characters, not bytes - the limit counts characters', () => {
     // Hebrew is two bytes per character in UTF-8, so a byte count would be
     // wrong by about 8% here and would give a false sense of headroom.
-    expect(Buffer.byteLength(migration, 'utf8')).toBeGreaterThan(migration.length)
+    expect(Buffer.byteLength(contents, 'utf8')).toBeGreaterThan(contents.length)
   })
+})
 
+describe('0001_init.sql - the one-time setup values', () => {
   it('never carries a real project ref or VAPID key - only the placeholders', () => {
     // This is the file both a person pastes into the Supabase SQL Editor by
     // hand AND the one .github/workflows/migrate.yml runs automatically

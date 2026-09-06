@@ -36,6 +36,14 @@ interface AppContextValue {
   setProfile: (profile: Profile) => void
   /** Applies a plant change locally so the UI does not wait for a round trip. */
   patchPlant: (plant: Plant) => void
+  /**
+   * This person's own snoozes, by plant id, mapping to `snoozed_until`. A
+   * plant with no entry here is not snoozed - never a stale timestamp to
+   * ignore, just absent.
+   */
+  snoozes: Map<string, string>
+  /** Applies a snooze (or its cancellation, with `until: null`) locally. */
+  patchSnooze: (plantId: string, until: string | null) => void
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
@@ -61,6 +69,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [spaces, setSpaces] = useState<Space[]>([])
   const [plants, setPlants] = useState<Plant[]>([])
   const [people, setPeople] = useState<Map<string, Person>>(new Map())
+  const [snoozes, setSnoozes] = useState<Map<string, string>>(new Map())
   const [currentSpaceId, setCurrentSpaceIdState] = useState<string | null>(readStoredSpace)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -105,6 +114,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         api.fetchSpaces(),
         api.fetchAllPlants(),
         api.fetchPeople(),
+        api.fetchSnoozes(userId),
       ])
     try {
       let result
@@ -120,12 +130,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await new Promise((resolve) => setTimeout(resolve, 1200))
         result = await fetchEverything()
       }
-      const [nextProfile, nextSpaces, nextPlants, nextPeople] = result
+      const [nextProfile, nextSpaces, nextPlants, nextPeople, nextSnoozes] = result
       setProfile(nextProfile)
       adoptLanguage(nextProfile)
       setSpaces(nextSpaces)
       setPlants(nextPlants)
       setPeople(new Map(nextPeople.map((person) => [person.id, person])))
+      setSnoozes(new Map(nextSnoozes.map((row) => [row.plant_id, row.snoozed_until])))
       setCurrentSpaceIdState((current) => {
         const stillValid = current && nextSpaces.some((space) => space.id === current)
         return stillValid ? current : (nextSpaces[0]?.id ?? null)
@@ -160,6 +171,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSpaces([])
       setPlants([])
       setPeople(new Map())
+      setSnoozes(new Map())
       return
     }
     setLoading(true)
@@ -227,6 +239,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setPlants((current) => current.map((item) => (item.id === plant.id ? plant : item)))
   }, [])
 
+  const patchSnooze = useCallback((plantId: string, until: string | null) => {
+    setSnoozes((current) => {
+      const next = new Map(current)
+      if (until) next.set(plantId, until)
+      else next.delete(plantId)
+      return next
+    })
+  }, [])
+
   const value = useMemo<AppContextValue>(
     () => ({
       session,
@@ -243,10 +264,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       reload,
       setProfile,
       patchPlant,
+      snoozes,
+      patchSnooze,
     }),
     [
       session, profile, spaces, plants, people, today, currentSpaceId,
       setCurrentSpaceId, loading, authReady, error, reload, patchPlant,
+      snoozes, patchSnooze,
     ],
   )
 

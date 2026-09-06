@@ -1,6 +1,6 @@
 import { t } from './i18n'
 import { supabase } from './supabase'
-import type { Member, Plant, Profile, Space, WateringEvent } from './types'
+import type { Member, Plant, PlantSnooze, Profile, Space, WateringEvent } from './types'
 
 // Thin wrappers over the queries the screens need. Errors are thrown rather
 // than returned so callers can use one try/catch per user action, and RLS does
@@ -172,6 +172,42 @@ export async function unwaterPlant(plantId: string): Promise<Plant> {
     )
   }
   return data as Plant
+}
+
+/** Every plant this person has personally snoozed, watered or not. */
+export async function fetchSnoozes(userId: string): Promise<Pick<PlantSnooze, 'plant_id' | 'snoozed_until'>[]> {
+  const { data, error } = await supabase
+    .from('plant_snoozes')
+    .select('plant_id, snoozed_until')
+    .eq('user_id', userId)
+  if (error) throw error
+  return data ?? []
+}
+
+/**
+ * Defers this one person's reminder for one plant until `until`. Personal,
+ * not shared: it never touches the plant row, so anyone else in the space
+ * still sees it as due and still gets their own reminder on schedule.
+ * Safe to call again on an already-snoozed plant - it just replaces the time.
+ */
+export async function snoozePlant(plantId: string, userId: string, until: string): Promise<void> {
+  const { error } = await supabase
+    .from('plant_snoozes')
+    .upsert(
+      { plant_id: plantId, user_id: userId, snoozed_until: until },
+      { onConflict: 'plant_id,user_id' },
+    )
+  if (error) throw error
+}
+
+/** Ends a snooze early - the plant goes straight back to Late/Due. */
+export async function cancelSnooze(plantId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('plant_snoozes')
+    .delete()
+    .eq('plant_id', plantId)
+    .eq('user_id', userId)
+  if (error) throw error
 }
 
 /** Recent waterings for a plant, newest first. */

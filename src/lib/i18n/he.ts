@@ -52,7 +52,9 @@ export const he = {
     nothingDue: 'אין צמחים להשקיה היום.',
     groupLate: 'באיחור',
     groupDue: 'להשקיה היום',
+    groupSnoozed: 'מושהה',
     groupDone: 'הושקו הערב',
+    someSnoozed: (n: number) => `${plantCount(n, 'he')} ${n === 1 ? 'מושהה' : 'מושהים'}`,
     nextUp: (what: string) => `הבא בתור: ${what}`,
     nothingScheduled: 'אין שום דבר מתוזמן',
     emptyTitle: 'עוד אין צמחים',
@@ -76,6 +78,25 @@ export const he = {
     undoWatering: 'ביטול השקיה',
     unwaterAria: (name: string) => `ביטול ההשקיה של ${name}`,
     wateringUndone: (name: string) => `בוטלה ההשקיה של ${name}.`,
+    snooze: 'השהיה',
+    snoozeAria: (name: string) => `השהיית התזכורת של ${name}`,
+    cancelSnooze: 'ביטול השהיה',
+    cancelSnoozeAria: (name: string) => `ביטול ההשהיה של ${name}`,
+    snoozedUntil: (when: string) => `מושהה עד ${when}`,
+  },
+
+  snooze: {
+    title: (n: number): string => (n === 1 ? 'השהיית תזכורת' : 'השהיית תזכורות'),
+    presets: {
+      thirtyMinutes: 'חצי שעה',
+      oneHour: 'שעה',
+      threeHours: '3 שעות',
+    },
+    custom: 'זמן מותאם אישית',
+    setCustom: 'קביעה',
+    invalidCustom: 'הזמן צריך להיות בעתיד.',
+    confirmed: (when: string) => `התזכורת תחזור ב-${when}.`,
+    cancelled: 'ההשהיה בוטלה.',
   },
 
   plantForm: {

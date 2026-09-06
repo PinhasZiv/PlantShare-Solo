@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { classify } from '../lib/due'
-import { describePeriod, firstName, formatDate, relativeDay } from '../lib/format'
+import { describePeriod, firstName, formatDate, formatSnoozeUntil, relativeDay } from '../lib/format'
 import { useI18n, type Language } from '../lib/i18n'
 import type { Plant } from '../lib/types'
-import { CheckIcon, DropIcon, UndoIcon } from './Icons'
+import { CheckIcon, ClockIcon, DropIcon, UndoIcon } from './Icons'
 
 /** מי השקה: אני, מישהו אחר בשם, או שאף אחד עוד לא. */
 export type WateredBy = { kind: 'you' } | { kind: 'other'; name: string | null } | null
@@ -21,6 +21,11 @@ interface PlantCardProps {
    */
   onUnwater?: () => Promise<void>
   onOpen?: () => void
+  /** ISO instant this person's own snooze on this plant runs out. */
+  snoozedUntil?: string
+  /** Opens the duration picker for this one plant - only offered when it is not already snoozed. */
+  onSnooze?: () => void
+  onCancelSnooze?: () => Promise<void>
 }
 
 /**
@@ -36,6 +41,9 @@ export function PlantCard({
   onWater,
   onUnwater,
   onOpen,
+  snoozedUntil,
+  onSnooze,
+  onCancelSnooze,
 }: PlantCardProps) {
   const { t, language } = useI18n()
   const [busy, setBusy] = useState(false)
@@ -56,6 +64,16 @@ export function PlantCard({
     setBusy(true)
     try {
       await onUnwater()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function cancelSnooze() {
+    if (!onCancelSnooze || busy) return
+    setBusy(true)
+    try {
+      await onCancelSnooze()
     } finally {
       setBusy(false)
     }
@@ -84,7 +102,9 @@ export function PlantCard({
         <p className="plant-meta">
           {spaceName && <span className="chip">{spaceName}</span>}
           <span>{describePeriod(plant.period_days, language)}</span>
-          {info.status === 'watered_today' ? (
+          {snoozedUntil ? (
+            <span>{t.plant.snoozedUntil(formatSnoozeUntil(snoozedUntil, today, language))}</span>
+          ) : info.status === 'watered_today' ? (
             <>
               <span>
                 {!wateredBy || wateredBy.kind === 'you'
@@ -124,6 +144,32 @@ export function PlantCard({
         >
           <UndoIcon size={20} />
           <span>{busy ? '...' : t.plant.undoWatering}</span>
+        </button>
+      )}
+
+      {onSnooze && (
+        <button
+          type="button"
+          className="water-button water-button-muted"
+          onClick={onSnooze}
+          disabled={busy}
+          aria-label={t.plant.snoozeAria(plant.name)}
+        >
+          <ClockIcon size={20} />
+          <span>{t.plant.snooze}</span>
+        </button>
+      )}
+
+      {onCancelSnooze && (
+        <button
+          type="button"
+          className="water-button water-button-muted"
+          onClick={cancelSnooze}
+          disabled={busy}
+          aria-label={t.plant.cancelSnoozeAria(plant.name)}
+        >
+          <UndoIcon size={20} />
+          <span>{busy ? '...' : t.plant.cancelSnooze}</span>
         </button>
       )}
     </article>

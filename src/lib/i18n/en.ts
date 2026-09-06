@@ -51,7 +51,9 @@ export const en: Strings = {
     nothingDue: 'Nothing is due today.',
     groupLate: 'Overdue',
     groupDue: 'Due today',
+    groupSnoozed: 'Snoozed',
     groupDone: 'Watered this evening',
+    someSnoozed: (n: number) => `${plantCount(n, 'en')} snoozed`,
     nextUp: (what: string) => `Next up: ${what}`,
     nothingScheduled: 'nothing scheduled',
     emptyTitle: 'No plants yet',
@@ -75,6 +77,25 @@ export const en: Strings = {
     undoWatering: 'Undo watering',
     unwaterAria: (name: string) => `Undo watering ${name}`,
     wateringUndone: (name: string) => `Undid watering ${name}.`,
+    snooze: 'Snooze',
+    snoozeAria: (name: string) => `Snooze the reminder for ${name}`,
+    cancelSnooze: 'Cancel snooze',
+    cancelSnoozeAria: (name: string) => `Cancel the snooze for ${name}`,
+    snoozedUntil: (when: string) => `Snoozed until ${when}`,
+  },
+
+  snooze: {
+    title: (n: number) => (n === 1 ? 'Snooze reminder' : 'Snooze reminders'),
+    presets: {
+      thirtyMinutes: '30 minutes',
+      oneHour: '1 hour',
+      threeHours: '3 hours',
+    },
+    custom: 'Custom time',
+    setCustom: 'Set',
+    invalidCustom: 'Pick a time in the future.',
+    confirmed: (when: string) => `You'll be reminded again at ${when}.`,
+    cancelled: 'Snooze cancelled.',
   },
 
   plantForm: {

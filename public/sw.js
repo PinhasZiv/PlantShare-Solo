@@ -13,6 +13,15 @@
 const CACHE = 'plantshare-v1'
 const SCOPE_PATH = new URL(self.registration.scope).pathname
 
+// The notification body/title come from the server already worded in the
+// person's own language (see supabase/functions/_shared/messages.ts), but the
+// action button titles are drawn locally - they never went through that path,
+// so they need their own tiny lookup by the same `lang` field.
+const ACTION_LABELS = {
+  he: { open: 'פתיחת הרשימה', snooze: 'השהיה' },
+  en: { open: 'Open list', snooze: 'Snooze' },
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.add(SCOPE_PATH)).catch(() => {}))
   self.skipWaiting()
@@ -75,6 +84,7 @@ self.addEventListener('push', (event) => {
   }
 
   const title = payload.title || 'הגיע הזמן להשקות'
+  const labels = ACTION_LABELS[payload.lang] || ACTION_LABELS.he
   const options = {
     body: payload.body || '',
     // The interface is Hebrew, so the notification is laid out right to left
@@ -94,7 +104,15 @@ self.addEventListener('push', (event) => {
       spaceId: payload.spaceId || null,
       url: payload.spaceId ? `${SCOPE_PATH}?space=${payload.spaceId}` : SCOPE_PATH,
     },
-    actions: [{ action: 'open', title: 'פתיחת הרשימה' }],
+    // A test notification has no real due plants behind it, so the Snooze
+    // action - which opens the app straight to a duration picker for
+    // whatever is currently due - would just land on an empty picker.
+    actions: payload.test
+      ? [{ action: 'open', title: labels.open }]
+      : [
+          { action: 'open', title: labels.open },
+          { action: 'snooze', title: labels.snooze },
+        ],
   }
 
   event.waitUntil(self.registration.showNotification(title, options))
@@ -102,7 +120,12 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const target = (event.notification.data && event.notification.data.url) || SCOPE_PATH
+  const base = (event.notification.data && event.notification.data.url) || SCOPE_PATH
+  // The Snooze action opens straight into the in-app duration picker for
+  // whatever is due right now - there is no single plant to target from a
+  // notification that can cover several at once, so the app decides which
+  // plants to offer once it is actually open, not this service worker.
+  const target = event.action === 'snooze' ? base + (base.includes('?') ? '&' : '?') + 'snooze=1' : base
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
