@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import * as api from '../lib/api'
+import { errorMessage } from '../lib/errors'
 import { initials } from '../lib/format'
 import { useApp } from '../state/AppState'
 import { useToast } from './Toast'
@@ -247,7 +248,7 @@ export function SpaceSetup({
       )
       onDone()
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
+      setError(errorMessage(cause))
       setBusy(false)
     }
   }

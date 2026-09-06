@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { errorMessage } from '../lib/errors'
 import { getLanguage, isLanguage, setLanguage } from '../lib/i18n'
 import { supabase } from '../lib/supabase'
 import { todayIn } from '../lib/due'
@@ -98,13 +99,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const reload = useCallback(async () => {
     if (!userId) return
     setError(null)
-    try {
-      const [nextProfile, nextSpaces, nextPlants, nextPeople] = await Promise.all([
+    const fetchEverything = () =>
+      Promise.all([
         api.fetchProfile(userId),
         api.fetchSpaces(),
         api.fetchAllPlants(),
         api.fetchPeople(),
       ])
+    try {
+      let result
+      try {
+        result = await fetchEverything()
+      } catch {
+        // A cold start (opening the PWA after it sat backgrounded, or from
+        // fully closed) can race the very first request against a session
+        // token that is still being refreshed, or a network interface that
+        // has not woken up yet. That clears up within a second - which is
+        // all "press try again" ever did - so one silent retry here means
+        // the user does not have to do it by hand.
+        await new Promise((resolve) => setTimeout(resolve, 1200))
+        result = await fetchEverything()
+      }
+      const [nextProfile, nextSpaces, nextPlants, nextPeople] = result
       setProfile(nextProfile)
       adoptLanguage(nextProfile)
       setSpaces(nextSpaces)
@@ -115,7 +131,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return stillValid ? current : (nextSpaces[0]?.id ?? null)
       })
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
+      setError(errorMessage(cause))
     } finally {
       setLoading(false)
     }

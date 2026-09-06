@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { addDays } from '../lib/due'
+import { errorMessage } from '../lib/errors'
 import { formatDate } from '../lib/format'
 import { useI18n } from '../lib/i18n'
 import type { Plant } from '../lib/types'
@@ -164,7 +165,7 @@ export function PlantForm({ today, existing, onCancel, onSave, onDelete }: Plant
               try {
                 await onDelete()
               } catch (cause) {
-                setError(cause instanceof Error ? cause.message : String(cause))
+                setError(errorMessage(cause))
                 setBusy(false)
               }
             }}

@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
+import { errorMessage } from '../lib/errors'
 
 interface ToastAction {
   label: string
@@ -36,7 +37,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const showError = useCallback(
     (cause: unknown) => {
-      show(cause instanceof Error ? cause.message : String(cause), { tone: 'error' })
+      show(errorMessage(cause), { tone: 'error' })
     },
     [show],
   )
