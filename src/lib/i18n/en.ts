@@ -222,6 +222,9 @@ export const en: Strings = {
     },
     test: {
       noServer: 'Could not reach the server. Is the send-test function deployed?',
+      notSignedIn: 'Your sign-in has expired. Try signing out and back in, then try again.',
+      notConfigured: 'The server-side setup is missing. Run the setup script against the database.',
+      serverError: 'The server returned an error. Try again in a moment.',
       noSubscription: 'This device is not subscribed yet. Turn reminders on first.',
       rejected: 'The push service rejected it. Check that the keys match.',
       sent: (delivered: number, total: number) =>

@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js'
 import { t } from './i18n'
 import { VAPID_PUBLIC_KEY, supabase } from './supabase'
 
@@ -111,12 +112,40 @@ export async function disablePush(): Promise<void> {
   await subscription.unsubscribe()
 }
 
+/**
+ * When send-test returns a non-2xx status, supabase-js discards the response
+ * body into `error` and leaves `data` null - so the { error: 'reason' } JSON
+ * the function actually sent back has to be read from here instead. Anything
+ * that is not a well-formed JSON body with a string `error` field reads as
+ * `null`, which just falls through to the generic message.
+ */
+async function readFunctionErrorReason(error: FunctionsHttpError): Promise<string | null> {
+  try {
+    const body: unknown = await error.context.json()
+    const reason = (body as { error?: unknown } | null)?.error
+    return typeof reason === 'string' ? reason : null
+  } catch {
+    return null
+  }
+}
+
 /** Asks the server to push one notification to this account's devices now. */
 export async function sendTestNotification(): Promise<{ ok: boolean; message: string }> {
   const { data, error } = await supabase.functions.invoke('send-test', { body: {} })
-  if (error) return { ok: false, message: t().settings.test.noServer }
-  if (data?.error === 'no_subscriptions') {
-    return { ok: false, message: t().settings.test.noSubscription }
+  if (error) {
+    // A non-2xx response (auth rejected, nothing to push to, the server-side
+    // setup missing) is a FunctionsHttpError with the real reason inside its
+    // body - collapsing every one of those into "could not reach the server"
+    // was actively misleading. A true network/relay failure has no such body
+    // to read, and is the one case that message is actually true for.
+    if (error instanceof FunctionsHttpError) {
+      const reason = await readFunctionErrorReason(error)
+      if (reason === 'not authenticated') return { ok: false, message: t().settings.test.notSignedIn }
+      if (reason === 'no_subscriptions') return { ok: false, message: t().settings.test.noSubscription }
+      if (reason === 'not_configured') return { ok: false, message: t().settings.test.notConfigured }
+      return { ok: false, message: t().settings.test.serverError }
+    }
+    return { ok: false, message: t().settings.test.noServer }
   }
   if (!data?.ok) return { ok: false, message: t().settings.test.rejected }
   return { ok: true, message: t().settings.test.sent(data.delivered, data.devices) }
