@@ -1,12 +1,19 @@
 import { useState } from 'react'
 import { classify } from '../lib/due'
-import { describePeriod, firstName, formatDate, formatSnoozeUntil, relativeDay } from '../lib/format'
+import {
+  describePeriod,
+  formatDate,
+  formatSnoozeUntil,
+  personLabel,
+  relativeDay,
+  type PersonLabel,
+} from '../lib/format'
 import { useI18n, type Language } from '../lib/i18n'
 import type { Plant } from '../lib/types'
-import { CheckIcon, ClockIcon, DropIcon, UndoIcon } from './Icons'
+import { CheckIcon, ClockIcon, DropIcon, PencilIcon, UndoIcon } from './Icons'
 
 /** מי השקה: אני, מישהו אחר בשם, או שאף אחד עוד לא. */
-export type WateredBy = { kind: 'you' } | { kind: 'other'; name: string | null } | null
+export type WateredBy = PersonLabel
 
 interface PlantCardProps {
   plant: Plant
@@ -20,7 +27,10 @@ interface PlantCardProps {
    * זו רק שאלה של מתי להציע את הפעולה, לא מי מורשה לבצע אותה.
    */
   onUnwater?: () => Promise<void>
+  /** לחיצה על גוף הכרטיס - פותחת את היסטוריית ההשקיה שלו. */
   onOpen?: () => void
+  /** כפתור עריכה נפרד וקטן - קיים רק ברשימת "צמחים", לא ב"הערב". */
+  onEdit?: () => void
   /** ISO instant this person's own snooze on this plant runs out. */
   snoozedUntil?: string
   /** Opens the duration picker for this one plant - only offered when it is not already snoozed. */
@@ -41,6 +51,7 @@ export function PlantCard({
   onWater,
   onUnwater,
   onOpen,
+  onEdit,
   snoozedUntil,
   onSnooze,
   onCancelSnooze,
@@ -172,6 +183,17 @@ export function PlantCard({
           <span>{busy ? '...' : t.plant.cancelSnooze}</span>
         </button>
       )}
+
+      {onEdit && (
+        <button
+          type="button"
+          className="icon-button"
+          onClick={onEdit}
+          aria-label={t.plant.editAria(plant.name)}
+        >
+          <PencilIcon size={17} />
+        </button>
+      )}
     </article>
   )
 }
@@ -182,9 +204,5 @@ export function wateredByLabel(
   selfId: string | null,
   language: Language,
 ): WateredBy {
-  if (!plant.last_watered_by) return null
-  if (plant.last_watered_by === selfId) return { kind: 'you' }
-  const person = people.get(plant.last_watered_by)
-  // A null name means "we do not know who", which each language words itself.
-  return { kind: 'other', name: person ? firstName(person.display_name, person.email, language) : null }
+  return personLabel(plant.last_watered_by, people, selfId, language)
 }

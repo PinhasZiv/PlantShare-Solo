@@ -328,6 +328,22 @@ code {
 .water-button-muted { background: var(--surface-2); color: var(--text-muted); }
 .water-button-muted:active { background: var(--border); color: var(--text); }
 
+/* A small, deliberately quiet action on a card - edit is available but not
+   competing with Water for attention the way the other end-buttons do. */
+.icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-inline-start: 1px solid var(--border);
+  background: none;
+  color: var(--text-muted);
+}
+
+.icon-button:active { background: var(--surface-2); color: var(--text); }
+
 /* ------------------------------------------------------------ buttons --- */
 
 .btn {
@@ -451,6 +467,28 @@ code {
 
 .sheet-actions { display: flex; gap: 10px; }
 .sheet-actions .btn { flex: 1; }
+
+/* ----------------------------------------------------------- history --- */
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.history-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-block-end: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.history-row:last-child { border-block-end: 0; }
+.history-who { color: var(--text-muted); }
 
 /* ----------------------------------------------------------- fields --- */
 

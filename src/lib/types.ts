@@ -54,6 +54,20 @@ export interface WateringEvent {
 }
 
 /**
+ * One row in a plant's permanent watering log. Unlike `plants` (which only
+ * ever holds the *latest* watering), this survives the day passing and stays
+ * visible after the "watered today" badge is gone - undoing a watering does
+ * remove its row here too, the same way it restores everything else about
+ * that watering as if it had not happened.
+ */
+export interface WateringHistoryEntry {
+  id: string
+  user_id: string
+  watered_on: string
+  created_at: string
+}
+
+/**
  * One person's personal deferral of one plant's reminder. Snoozing never
  * touches the plant itself (next_due_date, last_watered_date) - it only
  * suppresses this one person's notification and Tonight-screen nagging until

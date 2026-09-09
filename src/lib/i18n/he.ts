@@ -29,6 +29,7 @@ export const he = {
     tryAgain: 'ניסיון נוסף',
     somethingWrong: 'משהו השתבש',
     undo: 'ביטול',
+    close: 'סגירה',
   },
 
   signIn: {
@@ -83,6 +84,12 @@ export const he = {
     cancelSnooze: 'ביטול השהיה',
     cancelSnoozeAria: (name: string) => `ביטול ההשהיה של ${name}`,
     snoozedUntil: (when: string) => `מושהה עד ${when}`,
+    editAria: (name: string) => `עריכת ${name}`,
+  },
+
+  history: {
+    title: (name: string) => `היסטוריית ההשקיה של ${name}`,
+    empty: 'עוד לא הושקה אף פעם.',
   },
 
   snooze: {

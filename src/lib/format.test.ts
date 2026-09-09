@@ -1,5 +1,41 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { formatSnoozeUntil } from './format'
+import { formatSnoozeUntil, personLabel } from './format'
+
+describe('personLabel', () => {
+  const people = new Map([
+    ['dana-id', { display_name: 'Dana Cohen', email: 'dana@example.com' }],
+    ['no-name-id', { display_name: null, email: null }],
+  ])
+
+  it('is "you" for the signed-in person themselves', () => {
+    expect(personLabel('self-id', people, 'self-id', 'he')).toEqual({ kind: 'you' })
+  })
+
+  it('gives the first name of someone found in the people map', () => {
+    expect(personLabel('dana-id', people, 'self-id', 'he')).toEqual({
+      kind: 'other',
+      name: 'Dana',
+    })
+  })
+
+  it('gives a null name for someone not in the people map - "someone else" is worded by the caller', () => {
+    expect(personLabel('a-stranger', people, 'self-id', 'he')).toEqual({
+      kind: 'other',
+      name: null,
+    })
+  })
+
+  it('falls back to a null-name label for a person with no display name or email', () => {
+    expect(personLabel('no-name-id', people, 'self-id', 'en')).toEqual({
+      kind: 'other',
+      name: 'someone',
+    })
+  })
+
+  it('is null when there is no user id at all', () => {
+    expect(personLabel(null, people, 'self-id', 'he')).toBeNull()
+  })
+})
 
 // formatSnoozeUntil is deliberately dependent on this device's own timezone -
 // that is the whole point, showing when the reminder comes back in the

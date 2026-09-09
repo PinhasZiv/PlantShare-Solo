@@ -27,6 +27,7 @@ export const en: Strings = {
     tryAgain: 'Try again',
     somethingWrong: 'Something went wrong',
     undo: 'Undo',
+    close: 'Close',
   },
 
   signIn: {
@@ -82,6 +83,12 @@ export const en: Strings = {
     cancelSnooze: 'Cancel snooze',
     cancelSnoozeAria: (name: string) => `Cancel the snooze for ${name}`,
     snoozedUntil: (when: string) => `Snoozed until ${when}`,
+    editAria: (name: string) => `Edit ${name}`,
+  },
+
+  history: {
+    title: (name: string) => `${name}'s watering history`,
+    empty: 'Not watered yet.',
   },
 
   snooze: {

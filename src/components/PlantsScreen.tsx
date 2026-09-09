@@ -5,6 +5,7 @@ import { useApp } from '../state/AppState'
 import { useWatering } from '../state/useWatering'
 import { PlantCard, wateredByLabel } from './PlantCard'
 import { PlantForm, type PlantDraft } from './PlantForm'
+import { PlantHistory } from './PlantHistory'
 import { PlusIcon } from './Icons'
 import { useToast } from './Toast'
 import { useI18n } from '../lib/i18n'
@@ -18,6 +19,7 @@ export function PlantsScreen() {
   const toast = useToast()
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<Plant | null>(null)
+  const [viewingHistory, setViewingHistory] = useState<Plant | null>(null)
 
   const spacePlants = useMemo(
     () =>
@@ -102,7 +104,8 @@ export function PlantsScreen() {
               onUnwater={
                 plant.last_watered_by === session?.user.id ? () => unwater(plant) : undefined
               }
-              onOpen={() => setEditing(plant)}
+              onOpen={() => setViewingHistory(plant)}
+              onEdit={() => setEditing(plant)}
             />
           ))}
         </section>
@@ -128,6 +131,9 @@ export function PlantsScreen() {
           onSave={savePlant}
           onDelete={removePlant}
         />
+      )}
+      {viewingHistory && (
+        <PlantHistory plant={viewingHistory} onClose={() => setViewingHistory(null)} />
       )}
     </div>
   )

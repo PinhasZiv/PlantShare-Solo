@@ -4,6 +4,7 @@ import { useApp } from '../state/AppState'
 import { useSnooze } from '../state/useSnooze'
 import { useWatering } from '../state/useWatering'
 import { PlantCard, wateredByLabel } from './PlantCard'
+import { PlantHistory } from './PlantHistory'
 import { SnoozeSheet } from './SnoozeSheet'
 import { formatDate } from '../lib/format'
 import { useI18n, type Language, type Strings } from '../lib/i18n'
@@ -36,6 +37,7 @@ export function TonightScreen({ onManagePlants }: { onManagePlants: () => void }
   const selfId = session?.user.id ?? null
 
   const [sheetTargets, setSheetTargets] = useState<Plant[] | null>(null)
+  const [viewingHistory, setViewingHistory] = useState<Plant | null>(null)
 
   // A snoozed plant should come back on its own the moment the timer runs
   // out, without waiting for a navigation or a reload to force a re-render.
@@ -127,6 +129,7 @@ export function TonightScreen({ onManagePlants }: { onManagePlants: () => void }
               spaceName={showSpaceNames ? spaceNames.get(plant.space_id) : undefined}
               onWater={() => water(plant)}
               onSnooze={() => setSheetTargets([plant])}
+              onOpen={() => setViewingHistory(plant)}
             />
           ))}
         </section>
@@ -143,6 +146,7 @@ export function TonightScreen({ onManagePlants }: { onManagePlants: () => void }
               spaceName={showSpaceNames ? spaceNames.get(plant.space_id) : undefined}
               onWater={() => water(plant)}
               onSnooze={() => setSheetTargets([plant])}
+              onOpen={() => setViewingHistory(plant)}
             />
           ))}
         </section>
@@ -160,6 +164,7 @@ export function TonightScreen({ onManagePlants }: { onManagePlants: () => void }
               snoozedUntil={until}
               onWater={() => water(plant)}
               onCancelSnooze={() => cancelSnooze(plant)}
+              onOpen={() => setViewingHistory(plant)}
             />
           ))}
         </section>
@@ -178,6 +183,7 @@ export function TonightScreen({ onManagePlants }: { onManagePlants: () => void }
               spaceName={showSpaceNames ? spaceNames.get(plant.space_id) : undefined}
               wateredBy={wateredByLabel(plant, people, selfId, language)}
               onUnwater={plant.last_watered_by === selfId ? () => unwater(plant) : undefined}
+              onOpen={() => setViewingHistory(plant)}
             />
           ))}
         </section>
@@ -198,6 +204,10 @@ export function TonightScreen({ onManagePlants }: { onManagePlants: () => void }
             setSheetTargets(null)
           }}
         />
+      )}
+
+      {viewingHistory && (
+        <PlantHistory plant={viewingHistory} onClose={() => setViewingHistory(null)} />
       )}
     </div>
   )

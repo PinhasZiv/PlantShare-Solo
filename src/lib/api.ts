@@ -1,6 +1,14 @@
 import { t } from './i18n'
 import { supabase } from './supabase'
-import type { Member, Plant, PlantSnooze, Profile, Space, WateringEvent } from './types'
+import type {
+  Member,
+  Plant,
+  PlantSnooze,
+  Profile,
+  Space,
+  WateringEvent,
+  WateringHistoryEntry,
+} from './types'
 
 // Thin wrappers over the queries the screens need. Errors are thrown rather
 // than returned so callers can use one try/catch per user action, and RLS does
@@ -211,7 +219,7 @@ export async function cancelSnooze(plantId: string, userId: string): Promise<voi
 }
 
 /** Recent waterings for a plant, newest first. */
-export async function fetchHistory(plantId: string, limit = 10) {
+export async function fetchHistory(plantId: string, limit = 20): Promise<WateringHistoryEntry[]> {
   const { data, error } = await supabase
     .from('watering_events')
     .select('id, watered_on, user_id, created_at')
@@ -219,5 +227,5 @@ export async function fetchHistory(plantId: string, limit = 10) {
     .order('created_at', { ascending: false })
     .limit(limit)
   if (error) throw error
-  return data ?? []
+  return (data ?? []) as WateringHistoryEntry[]
 }

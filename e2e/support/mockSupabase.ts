@@ -3,8 +3,9 @@ import type { Page, Route } from '@playwright/test'
 // A small stand-in for the pieces of the Supabase REST API the app actually
 // calls on the screens these tests exercise. It is not a general PostgREST
 // clone - just enough query/filter/upsert support for profiles, spaces,
-// plants and plant_snoozes, which is what fetchProfile/fetchSpaces/
-// fetchAllPlants/fetchPeople/fetchSnoozes/snoozePlant/cancelSnooze issue.
+// plants, plant_snoozes and watering_events, which is what fetchProfile/
+// fetchSpaces/fetchAllPlants/fetchPeople/fetchSnoozes/snoozePlant/
+// cancelSnooze/fetchHistory issue.
 
 export const FAKE_USER_ID = '11111111-1111-4111-8111-111111111111'
 export const FAKE_SPACE_ID = '22222222-2222-4222-8222-222222222222'
@@ -36,6 +37,9 @@ export interface FakeDb {
   spaces: { id: string; name: string; invite_code: string; created_by: string; created_at: string }[]
   plants: FakePlant[]
   snoozes: Map<string, string> // plant_id -> snoozed_until, this user only
+  wateringEvents: { id: string; plant_id: string; user_id: string; watered_on: string; created_at: string }[]
+  /** Other space members fetchPeople() should resolve names for - the signed-in user's own profile is always included automatically. */
+  otherPeople: { id: string; display_name: string | null; avatar_url: string | null; email: string | null }[]
 }
 
 export function makeFakeDb(overrides?: Partial<FakeDb>): FakeDb {
@@ -61,6 +65,8 @@ export function makeFakeDb(overrides?: Partial<FakeDb>): FakeDb {
     ],
     plants: [],
     snoozes: new Map(),
+    wateringEvents: [],
+    otherPeople: [],
     ...overrides,
   }
 }
@@ -93,7 +99,7 @@ export async function installSupabaseMock(page: Page, db: FakeDb): Promise<void>
       if (select === '*' || idFilter) return json(route, wantsSingle ? db.profile : [db.profile])
       // fetchPeople: a narrower column set, always an array.
       const { id, display_name, avatar_url, email } = db.profile
-      return json(route, [{ id, display_name, avatar_url, email }])
+      return json(route, [{ id, display_name, avatar_url, email }, ...db.otherPeople])
     }
 
     if (table === 'spaces' && method === 'GET') return json(route, db.spaces)
@@ -123,6 +129,14 @@ export async function installSupabaseMock(page: Page, db: FakeDb): Promise<void>
         if (plantId) db.snoozes.delete(plantId)
         return json(route, [])
       }
+    }
+
+    if (table === 'watering_events' && method === 'GET') {
+      const plantId = eqValue(url, 'plant_id')
+      const rows = db.wateringEvents
+        .filter((row) => row.plant_id === plantId)
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      return json(route, rows)
     }
 
     if (table === 'push_subscriptions') return json(route, [])

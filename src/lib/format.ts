@@ -43,6 +43,27 @@ export function firstName(
   return source.split(/[\s@]/)[0]
 }
 
+/** מי עשה פעולה: אני, מישהו אחר בשם (אם ידוע), או אף אחד. */
+export type PersonLabel = { kind: 'you' } | { kind: 'other'; name: string | null } | null
+
+/**
+ * Resolves a user id to "you" / a first name / "someone" - shared by every
+ * place that says who watered a plant, whether that is the plant's current
+ * state (PlantCard's wateredByLabel) or one row of its permanent history.
+ */
+export function personLabel(
+  userId: string | null,
+  people: Map<string, { display_name: string | null; email: string | null }>,
+  selfId: string | null,
+  language: Language,
+): PersonLabel {
+  if (!userId) return null
+  if (userId === selfId) return { kind: 'you' }
+  const person = people.get(userId)
+  // A null name means "we do not know who", which each language words itself.
+  return { kind: 'other', name: person ? firstName(person.display_name, person.email, language) : null }
+}
+
 /** "היום" / "בעוד יומיים", or "today" / "in 2 days". */
 export function relativeDay(isoDate: string, today: string, language: Language): string {
   const delta = daysBetween(today, isoDate)
