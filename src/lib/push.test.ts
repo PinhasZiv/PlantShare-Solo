@@ -5,7 +5,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 import { FunctionsClient } from '@supabase/functions-js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setLanguage } from './i18n'
-import { sendTestNotification } from './push'
+import { sendTestNotification, shouldAutoRestorePush } from './push'
 
 // send-test returns a non-2xx status for every failure case (not
 // authenticated, no subscriptions, the server-side setup missing), and
@@ -104,5 +104,28 @@ describe('sendTestNotification', () => {
     const result = await sendTestNotification()
     expect(result.ok).toBe(false)
     expect(result.message).toBe('לא הצלחתי להגיע לשרת. האם הפונקציה send-test הועלתה?')
+  })
+})
+
+// A device can wipe the push subscription (and, as happened once, the sign-in
+// session with it) while leaving the OS-level Notification permission grant
+// untouched, since Chrome stores that separately from site data. Silently
+// re-subscribing is only safe when permission was already decided - never
+// while it's still 'default', since requestPermission() would then pop the
+// native prompt with no one having asked for it.
+describe('shouldAutoRestorePush', () => {
+  it('restores when permission is granted but the subscription was lost', () => {
+    expect(shouldAutoRestorePush('granted', 'prompt')).toBe(true)
+    expect(shouldAutoRestorePush('granted', 'unsupported')).toBe(true)
+    expect(shouldAutoRestorePush('granted', 'unconfigured')).toBe(true)
+  })
+
+  it('does nothing when already subscribed', () => {
+    expect(shouldAutoRestorePush('granted', 'subscribed')).toBe(false)
+  })
+
+  it('never silently restores without an already-granted permission', () => {
+    expect(shouldAutoRestorePush('default', 'prompt')).toBe(false)
+    expect(shouldAutoRestorePush('denied', 'denied')).toBe(false)
   })
 })

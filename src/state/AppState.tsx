@@ -11,6 +11,7 @@ import {
 import type { Session } from '@supabase/supabase-js'
 import { errorMessage } from '../lib/errors'
 import { getLanguage, isLanguage, setLanguage } from '../lib/i18n'
+import { restorePushIfGranted } from '../lib/push'
 import { supabase } from '../lib/supabase'
 import { todayIn } from '../lib/due'
 import * as api from '../lib/api'
@@ -215,6 +216,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [userId, reload])
 
+  // A device can wipe the push subscription along with the sign-in session
+  // (which is what "the app logged me out" turned out to also be doing to
+  // notifications) while leaving the OS notification permission granted. If
+  // so, this silently re-subscribes - no prompt, since permission is already
+  // decided - the moment a session comes back, instead of leaving reminders
+  // off until someone notices and re-enables them by hand.
+  useEffect(() => {
+    if (!userId) return
+    void restorePushIfGranted(userId)
+  }, [userId])
 
   /**
    * Reconciles the language on the profile with the one this device is using.

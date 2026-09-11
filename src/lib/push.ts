@@ -103,6 +103,35 @@ export async function enablePush(userId: string): Promise<PushState> {
   return 'subscribed'
 }
 
+/**
+ * Whether it is safe to silently call enablePush() on app load, with no user
+ * interaction: only when the OS-level permission was already decided (so
+ * requestPermission() resolves immediately with no prompt) and the
+ * subscription is not already in place.
+ */
+export function shouldAutoRestorePush(permission: NotificationPermission, state: PushState): boolean {
+  return permission === 'granted' && state !== 'subscribed'
+}
+
+/**
+ * A phone can wipe the site storage a push subscription lives in - and, as
+ * happened here, the Supabase session with it - while leaving the
+ * OS-level Notification permission grant untouched, since Chrome stores that
+ * separately. When that happens the person sees "reminders are off" with no
+ * idea why, even though nothing about their choice to allow notifications
+ * changed. Call this once a signed-in session is confirmed: if permission is
+ * still granted, it silently re-subscribes with no prompt of any kind.
+ */
+export async function restorePushIfGranted(userId: string): Promise<void> {
+  if (!pushSupported() || !VAPID_PUBLIC_KEY) return
+  if (!shouldAutoRestorePush(Notification.permission, await currentPushState())) return
+  try {
+    await enablePush(userId)
+  } catch (error) {
+    console.error('could not silently restore the push subscription', error)
+  }
+}
+
 export async function disablePush(): Promise<void> {
   const registration = await navigator.serviceWorker.getRegistration(import.meta.env.BASE_URL)
   const subscription = await registration?.pushManager.getSubscription()
