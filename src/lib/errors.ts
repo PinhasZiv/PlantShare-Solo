@@ -16,3 +16,21 @@ export function errorMessage(cause: unknown): string {
   }
   return String(cause)
 }
+
+/**
+ * True for a browser-level failure to reach the network at all - a fetch()
+ * that never got a response - as opposed to a request that got one and was
+ * rejected (a bad query, an expired session, RLS). Supabase always throws
+ * PostgrestError/AuthError for the latter, which are plain objects, never
+ * TypeError; a bare fetch failure is the one case that is. Each engine words
+ * it differently ("Failed to fetch" in Chrome, "NetworkError when
+ * attempting to fetch resource" in Firefox, "Load failed" in Safari), so
+ * this checks the shape rather than the message text.
+ *
+ * Worth naming distinctly because its raw text ("TypeError: Failed to
+ * fetch") reads to a non-technical person as the app itself being broken,
+ * when it is almost always just a phone whose network has not woken up yet.
+ */
+export function isNetworkError(cause: unknown): boolean {
+  return cause instanceof TypeError
+}

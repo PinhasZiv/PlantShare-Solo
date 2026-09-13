@@ -9,8 +9,8 @@ import {
   type ReactNode,
 } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { errorMessage } from '../lib/errors'
-import { getLanguage, isLanguage, setLanguage } from '../lib/i18n'
+import { errorMessage, isNetworkError } from '../lib/errors'
+import { getLanguage, isLanguage, setLanguage, t } from '../lib/i18n'
 import { restorePushIfGranted } from '../lib/push'
 import { supabase } from '../lib/supabase'
 import { todayIn } from '../lib/due'
@@ -143,7 +143,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return stillValid ? current : (nextSpaces[0]?.id ?? null)
       })
     } catch (cause) {
-      setError(errorMessage(cause))
+      // A bare fetch failure (no network yet, mid cold-start) throws a raw
+      // TypeError whose engine-specific wording ("Failed to fetch", "Load
+      // failed"...) means nothing to someone reading it in Hebrew - it reads
+      // as the app being broken rather than the phone's connection not being
+      // up yet. A real Supabase rejection (expired session, RLS, a bad
+      // query) is never a TypeError, so it still gets its own readable
+      // message here.
+      setError(isNetworkError(cause) ? t().common.offline : errorMessage(cause))
     } finally {
       setLoading(false)
     }

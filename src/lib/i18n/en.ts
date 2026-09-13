@@ -26,6 +26,7 @@ export const en: Strings = {
     loading: 'Loading...',
     tryAgain: 'Try again',
     somethingWrong: 'Something went wrong',
+    offline: 'No internet connection. Check your connection and try again.',
     undo: 'Undo',
     close: 'Close',
   },

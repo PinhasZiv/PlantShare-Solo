@@ -28,6 +28,7 @@ export const he = {
     loading: 'טוען...',
     tryAgain: 'ניסיון נוסף',
     somethingWrong: 'משהו השתבש',
+    offline: 'אין חיבור לאינטרנט. כדאי לבדוק את החיבור ולנסות שוב.',
     undo: 'ביטול',
     close: 'סגירה',
   },
