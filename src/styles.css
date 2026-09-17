@@ -19,10 +19,10 @@
   --text-muted: #5d6b64;
   --border: #dfe4e0;
   --late: #b4442c;
+  --late-strong: #8f3521;
   --late-soft: #fbe9e4;
   --due: #9a6a10;
   --due-soft: #fdf2dc;
-  --done: #5d6b64;
   --radius: 14px;
   --shadow: 0 1px 2px rgb(20 32 27 / 0.06), 0 4px 14px rgb(20 32 27 / 0.05);
   color-scheme: light;
@@ -40,10 +40,10 @@
     --text-muted: #93a49b;
     --border: #26332c;
     --late: #ff9478;
+    --late-strong: #ffb09b;
     --late-soft: #3a1c14;
     --due: #e8bd6a;
     --due-soft: #33280f;
-    --done: #93a49b;
     --shadow: none;
     color-scheme: dark;
   }
@@ -227,6 +227,36 @@ code {
    fully legible and easy to hit. */
 .plant-watered_today .plant-main { opacity: 0.62; }
 
+/* תיבת סימון מובילה, לא כפתור רחב בסוף השורה: אזור הלחיצה גובה כל הכרטיס
+   (מטרת נגיעה נדיבה), אבל העיגול הנראה קטן - כך ששם הצמח מקבל את הרוחב
+   שהוא צריך, במקום לאבד אותו לכפתור עם אייקון וטקסט. */
+.plant-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  flex-shrink: 0;
+  border: 0;
+  background: none;
+  padding: 0;
+}
+
+.plant-checkbox-circle {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1), background 120ms ease-out, border-color 120ms ease-out;
+}
+
+.plant-checkbox:active .plant-checkbox-circle { transform: scale(0.85); }
+.plant-checkbox-checked .plant-checkbox-circle { background: var(--accent); border-color: var(--accent); }
+.plant-checkbox:disabled { opacity: 0.5; }
+
 .plant-main {
   flex: 1;
   text-align: start;
@@ -288,13 +318,6 @@ code {
 
 .badge-late { background: var(--late-soft); color: var(--late); }
 .badge-due { background: var(--accent-soft); color: var(--accent-strong); }
-.badge-done {
-  background: var(--surface-2);
-  color: var(--done);
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
 
 .chip {
   font-size: 0.74rem;
@@ -321,7 +344,6 @@ code {
 }
 
 .water-button:disabled { opacity: 0.6; }
-.water-button:active { background: var(--accent); color: #fff; }
 
 /* The undo action on an already-watered card: present, but visibly secondary
    next to the green primary action everywhere else on the screen. */
@@ -369,6 +391,13 @@ code {
 }
 
 .btn-danger-text { background: none; color: var(--late); padding: 10px 0; }
+
+/* A stronger, filled treatment for a destructive action that affects more
+ * than just the person tapping it (deleting a shared space for everyone,
+ * say) - kept visually distinct from btn-danger-text's plain link styling,
+ * which stays reserved for a destructive action that only affects yourself. */
+.btn-danger { background: var(--late); color: #fff; }
+.btn-danger:active { background: var(--late-strong); }
 
 .btn-small { min-height: 38px; padding: 8px 12px; font-size: 0.9rem; }
 
@@ -510,7 +539,7 @@ code {
 
 .field small { color: var(--text-muted); font-size: 0.82rem; }
 
-input, select {
+input, select, textarea {
   font: inherit;
   color: var(--text);
   background: var(--surface-2);
@@ -521,7 +550,12 @@ input, select {
   min-height: 46px;
 }
 
-input:focus-visible, select:focus-visible, button:focus-visible {
+textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }

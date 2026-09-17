@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { addDays } from '../lib/due'
-import { errorMessage } from '../lib/errors'
 import { formatDate } from '../lib/format'
 import { useI18n } from '../lib/i18n'
 import type { Plant } from '../lib/types'
+import { ConfirmSheet } from './ConfirmSheet'
 
 export interface PlantDraft {
   name: string
@@ -41,6 +41,7 @@ export function PlantForm({ today, existing, onCancel, onSave, onDelete }: Plant
   const [notes, setNotes] = useState(existing?.notes ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   useEffect(() => {
     // הפוקוס נוחת על שדה השם כדי שהמקלדת תהיה כבר פתוחה.
@@ -69,6 +70,7 @@ export function PlantForm({ today, existing, onCancel, onSave, onDelete }: Plant
   }
 
   return (
+    <>
     <div className="sheet-backdrop" onClick={onCancel} role="presentation">
       <form
         className="sheet"
@@ -132,11 +134,12 @@ export function PlantForm({ today, existing, onCancel, onSave, onDelete }: Plant
 
         <label className="field">
           <span>{t.plantForm.notes}</span>
-          <input
+          <textarea
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
             placeholder={t.plantForm.notesPlaceholder}
-            maxLength={200}
+            maxLength={2000}
+            rows={4}
           />
         </label>
 
@@ -156,24 +159,22 @@ export function PlantForm({ today, existing, onCancel, onSave, onDelete }: Plant
         </div>
 
         {onDelete && (
-          <button
-            type="button"
-            className="btn btn-danger-text"
-            onClick={async () => {
-              if (!window.confirm(t.plantForm.confirmDelete(existing?.name ?? ''))) return
-              setBusy(true)
-              try {
-                await onDelete()
-              } catch (cause) {
-                setError(errorMessage(cause))
-                setBusy(false)
-              }
-            }}
-          >
+          <button type="button" className="btn btn-danger-text" onClick={() => setConfirmingDelete(true)}>
             {t.plantForm.delete}
           </button>
         )}
       </form>
     </div>
+
+    {onDelete && confirmingDelete && (
+      <ConfirmSheet
+        title={t.plantForm.delete}
+        message={t.plantForm.confirmDelete(existing?.name ?? '')}
+        confirmLabel={t.plantForm.delete}
+        onConfirm={onDelete}
+        onCancel={() => setConfirmingDelete(false)}
+      />
+    )}
+    </>
   )
 }

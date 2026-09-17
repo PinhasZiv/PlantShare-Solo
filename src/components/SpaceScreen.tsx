@@ -6,6 +6,7 @@ import { useApp } from '../state/AppState'
 import { useToast } from './Toast'
 import { useI18n } from '../lib/i18n'
 import type { Member } from '../lib/types'
+import { ConfirmSheet } from './ConfirmSheet'
 
 /** מי נמצא במרחב, איך מזמינים עוד מישהו, ואיך יוצאים ממנו. */
 export function SpaceScreen() {
@@ -16,6 +17,7 @@ export function SpaceScreen() {
   const [renaming, setRenaming] = useState(false)
   const [draftName, setDraftName] = useState('')
   const [showJoin, setShowJoin] = useState(false)
+  const [confirming, setConfirming] = useState<'leave' | 'remove' | null>(null)
 
   useEffect(() => {
     if (!currentSpace) return
@@ -72,28 +74,19 @@ export function SpaceScreen() {
   }
 
   async function leave() {
-    if (!window.confirm(t.space.confirmLeave(currentSpace!.name))) return
-    try {
-      await api.leaveSpace(currentSpace!.id)
-      await reload()
-      toast.show(t.space.left)
-    } catch (cause) {
-      toast.showError(cause)
-    }
+    await api.leaveSpace(currentSpace!.id)
+    await reload()
+    toast.show(t.space.left)
   }
 
   async function removeSpace() {
-    if (!window.confirm(t.space.confirmRemove(currentSpace!.name))) return
-    try {
-      await api.deleteSpace(currentSpace!.id)
-      await reload()
-      toast.show(t.space.removed)
-    } catch (cause) {
-      toast.showError(cause)
-    }
+    await api.deleteSpace(currentSpace!.id)
+    await reload()
+    toast.show(t.space.removed)
   }
 
   return (
+    <>
     <div className="screen">
       <header className="screen-header">
         <h2>{t.space.title}</h2>
@@ -195,11 +188,11 @@ export function SpaceScreen() {
       </section>
 
       <section className="card card-quiet">
-        <button type="button" className="btn btn-danger-text" onClick={leave}>
+        <button type="button" className="btn btn-danger-text" onClick={() => setConfirming('leave')}>
           {t.space.leave}
         </button>
         {isOwner && (
-          <button type="button" className="btn btn-danger-text" onClick={removeSpace}>
+          <button type="button" className="btn btn-danger" onClick={() => setConfirming('remove')}>
             {t.space.remove}
           </button>
         )}
@@ -207,6 +200,33 @@ export function SpaceScreen() {
 
       {showJoin && <SpaceSetup onDone={() => setShowJoin(false)} allowCancel />}
     </div>
+
+    {confirming === 'leave' && (
+      <ConfirmSheet
+        title={t.space.leave}
+        message={t.space.confirmLeave(currentSpace.name)}
+        confirmLabel={t.space.leave}
+        onConfirm={async () => {
+          await leave()
+          setConfirming(null)
+        }}
+        onCancel={() => setConfirming(null)}
+      />
+    )}
+
+    {confirming === 'remove' && (
+      <ConfirmSheet
+        title={t.space.remove}
+        message={t.space.confirmRemove(currentSpace.name)}
+        confirmLabel={t.space.remove}
+        onConfirm={async () => {
+          await removeSpace()
+          setConfirming(null)
+        }}
+        onCancel={() => setConfirming(null)}
+      />
+    )}
+    </>
   )
 }
 

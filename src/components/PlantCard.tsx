@@ -10,7 +10,7 @@ import {
 } from '../lib/format'
 import { useI18n, type Language } from '../lib/i18n'
 import type { Plant } from '../lib/types'
-import { CheckIcon, ClockIcon, DropIcon, PencilIcon, UndoIcon } from './Icons'
+import { CheckIcon, ClockIcon, PencilIcon, UndoIcon } from './Icons'
 
 /** מי השקה: אני, מישהו אחר בשם, או שאף אחד עוד לא. */
 export type WateredBy = PersonLabel
@@ -80,6 +80,15 @@ export function PlantCard({
     }
   }
 
+  const isChecked = info.status === 'watered_today'
+  const canCheck = !isChecked && Boolean(onWater)
+  const canUncheck = isChecked && Boolean(onUnwater)
+
+  function toggle() {
+    if (canCheck) return void water()
+    if (canUncheck) return void unwater()
+  }
+
   async function cancelSnooze() {
     if (!onCancelSnooze || busy) return
     setBusy(true)
@@ -92,6 +101,22 @@ export function PlantCard({
 
   return (
     <article className={`plant-card plant-${info.status}`}>
+      {/* תיבת סימון מובילה, לא כפתור רחב בסוף השורה: אזור הלחיצה גובה כל
+          הכרטיס (מטרת נגיעה נדיבה), אבל העיגול הנראה קטן - כך ששם הצמח מקבל
+          את הרוחב שהוא צריך במקום לאבד אותו לכפתור עם אייקון וטקסט. */}
+      {(onWater || onUnwater) && (
+        <button
+          type="button"
+          className={`plant-checkbox ${isChecked ? 'plant-checkbox-checked' : ''}`}
+          onClick={toggle}
+          disabled={busy || (!canCheck && !canUncheck)}
+          aria-pressed={isChecked}
+          aria-label={isChecked ? t.plant.unwaterAria(plant.name) : t.plant.waterAria(plant.name)}
+        >
+          <span className="plant-checkbox-circle">{isChecked && <CheckIcon size={15} />}</span>
+        </button>
+      )}
+
       <button type="button" className="plant-main" onClick={onOpen} disabled={!onOpen}>
         <div className="plant-headline">
           {/* שם הצמח יכול להיות בעברית או באנגלית; plaintext נותן לכל שם
@@ -102,11 +127,6 @@ export function PlantCard({
           )}
           {info.status === 'due' && (
             <span className="badge badge-due">{t.plant.badgeDue}</span>
-          )}
-          {info.status === 'watered_today' && (
-            <span className="badge badge-done">
-              <CheckIcon size={14} /> {t.plant.badgeDone}
-            </span>
           )}
         </div>
 
@@ -131,32 +151,6 @@ export function PlantCard({
           )}
         </p>
       </button>
-
-      {onWater && info.status !== 'watered_today' && (
-        <button
-          type="button"
-          className="water-button"
-          onClick={water}
-          disabled={busy}
-          aria-label={t.plant.waterAria(plant.name)}
-        >
-          <DropIcon size={22} />
-          <span>{busy ? '...' : t.plant.water}</span>
-        </button>
-      )}
-
-      {onUnwater && info.status === 'watered_today' && (
-        <button
-          type="button"
-          className="water-button water-button-muted"
-          onClick={unwater}
-          disabled={busy}
-          aria-label={t.plant.unwaterAria(plant.name)}
-        >
-          <UndoIcon size={20} />
-          <span>{busy ? '...' : t.plant.undoWatering}</span>
-        </button>
-      )}
 
       {onSnooze && (
         <button

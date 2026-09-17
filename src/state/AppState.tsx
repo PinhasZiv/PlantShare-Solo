@@ -12,6 +12,7 @@ import type { Session } from '@supabase/supabase-js'
 import { errorMessage, isNetworkError } from '../lib/errors'
 import { getLanguage, isLanguage, setLanguage, t } from '../lib/i18n'
 import { restorePushIfGranted } from '../lib/push'
+import { COLD_START_RETRY_DELAYS_MS, withRetry } from '../lib/retry'
 import { supabase } from '../lib/supabase'
 import { todayIn } from '../lib/due'
 import * as api from '../lib/api'
@@ -118,19 +119,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         api.fetchSnoozes(userId),
       ])
     try {
-      let result
-      try {
-        result = await fetchEverything()
-      } catch {
-        // A cold start (opening the PWA after it sat backgrounded, or from
-        // fully closed) can race the very first request against a session
-        // token that is still being refreshed, or a network interface that
-        // has not woken up yet. That clears up within a second - which is
-        // all "press try again" ever did - so one silent retry here means
-        // the user does not have to do it by hand.
-        await new Promise((resolve) => setTimeout(resolve, 1200))
-        result = await fetchEverything()
-      }
+      // A cold start (opening the PWA after it sat backgrounded, or from
+      // fully closed) can race the very first request against a session
+      // token that is still being refreshed, or a network interface that has
+      // not woken up yet. That usually clears up within a few seconds on its
+      // own - which is all "press try again" ever did - so silently retrying
+      // here means the user does not have to do it by hand. A single quick
+      // retry still occasionally lost to a slower reconnect, hence the wider,
+      // increasingly spaced schedule.
+      const result = await withRetry(fetchEverything, COLD_START_RETRY_DELAYS_MS)
       const [nextProfile, nextSpaces, nextPlants, nextPeople, nextSnoozes] = result
       setProfile(nextProfile)
       adoptLanguage(nextProfile)

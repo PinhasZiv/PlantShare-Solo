@@ -66,18 +66,15 @@ export const he = {
   },
 
   plant: {
-    water: 'השקיתי',
     waterAria: (name: string) => `סימון ${name} כמושקה`,
     badgeLate: (n: number) => `איחור של ${days(n, 'he')}`,
     badgeDue: 'הערב',
-    badgeDone: 'בוצע',
     wateredBy: (who: string) => `הושקה על ידי ${who}`,
     wateredByYou: 'הושקה על ידך',
     nextIn: (when: string) => `הבא ${when}`,
     dueOn: (date: string) => `יעד: ${date}`,
     nextOn: (date: string) => `הבא: ${date}`,
     someoneElse: 'מישהו אחר',
-    undoWatering: 'ביטול השקיה',
     unwaterAria: (name: string) => `ביטול ההשקיה של ${name}`,
     wateringUndone: (name: string) => `בוטלה ההשקיה של ${name}.`,
     snooze: 'השהיה',

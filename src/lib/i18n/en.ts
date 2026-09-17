@@ -65,18 +65,15 @@ export const en: Strings = {
   },
 
   plant: {
-    water: 'Water',
     waterAria: (name: string) => `Mark ${name} as watered`,
     badgeLate: (n: number) => `${days(n, 'en')} late`,
     badgeDue: 'tonight',
-    badgeDone: 'done',
     wateredBy: (who: string) => `watered by ${who}`,
     wateredByYou: 'watered by you',
     nextIn: (when: string) => `next ${when}`,
     dueOn: (date: string) => `due: ${date}`,
     nextOn: (date: string) => `next: ${date}`,
     someoneElse: 'someone else',
-    undoWatering: 'Undo watering',
     unwaterAria: (name: string) => `Undo watering ${name}`,
     wateringUndone: (name: string) => `Undid watering ${name}.`,
     snooze: 'Snooze',
