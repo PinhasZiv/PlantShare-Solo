@@ -12,6 +12,7 @@ import type { Session } from '@supabase/supabase-js'
 import { errorMessage, isNetworkError } from '../lib/errors'
 import { getLanguage, isLanguage, setLanguage, t } from '../lib/i18n'
 import { restorePushIfGranted } from '../lib/push'
+import { reconcileReloadedPlants } from '../lib/reconcilePlants'
 import { COLD_START_RETRY_DELAYS_MS, withRetry } from '../lib/retry'
 import { supabase } from '../lib/supabase'
 import { todayIn } from '../lib/due'
@@ -77,6 +78,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [today, setToday] = useState(() => todayIn(Intl.DateTimeFormat().resolvedOptions().timeZone))
 
+  // Plant ids the realtime channel has patched in since the current reload()
+  // started - see reconcileReloadedPlants for why reload() needs this.
+  const touchedPlantIdsRef = useRef<Set<string>>(new Set())
+
   const timezone = profile?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
   const userId = session?.user.id ?? null
 
@@ -110,6 +115,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const reload = useCallback(async () => {
     if (!userId) return
     setError(null)
+    touchedPlantIdsRef.current = new Set()
     const fetchEverything = () =>
       Promise.all([
         api.fetchProfile(userId),
@@ -132,7 +138,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setProfile(nextProfile)
       adoptLanguage(nextProfile)
       setSpaces(nextSpaces)
-      setPlants(nextPlants)
+      setPlants((current) => reconcileReloadedPlants(current, nextPlants, touchedPlantIdsRef.current))
       setPeople(new Map(nextPeople.map((person) => [person.id, person])))
       setSnoozes(new Map(nextSnoozes.map((row) => [row.plant_id, row.snoozed_until])))
       setCurrentSpaceIdState((current) => {
@@ -191,9 +197,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .channel('plants-sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'plants' }, (payload) => {
         if (payload.eventType === 'DELETE') {
-          setPlants((current) => current.filter((plant) => plant.id !== (payload.old as Plant).id))
+          const removedId = (payload.old as Plant).id
+          touchedPlantIdsRef.current.add(removedId)
+          setPlants((current) => current.filter((plant) => plant.id !== removedId))
         } else {
           const incoming = payload.new as Plant
+          touchedPlantIdsRef.current.add(incoming.id)
           setPlants((current) => {
             const without = current.filter((plant) => plant.id !== incoming.id)
             return [...without, incoming]
