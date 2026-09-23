@@ -208,6 +208,23 @@ code {
 
 .group-title-late { color: var(--late); }
 
+/* צמחים שהושקו מתכווצים מאחורי <details> מובנה - סגור כברירת מחדל, כי מה
+   שעוד צריך טיפול חשוב יותר מרשומה של מה שכבר טופל. */
+.completed-summary {
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+.completed-summary::-webkit-details-marker { display: none; }
+.completed-summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-inline-end: 6px;
+  transition: transform 0.15s ease;
+}
+.completed-group[open] .completed-summary::before { transform: rotate(90deg); }
+.completed-group .plant-card { margin-top: 8px; }
+
 .plant-card {
   display: flex;
   align-items: stretch;

@@ -171,10 +171,13 @@ export function TonightScreen({ onManagePlants }: { onManagePlants: () => void }
       )}
 
       {groups.done.length > 0 && (
-        <section className="plant-group">
+        <details className="plant-group completed-group">
           {/* נשאר על המסך עד מחר, כדי שאדם שני שנכנס לאפליקציה יראה שהצמח
-              טופל, ולא רשימה ריקה בלי הסבר. */}
-          <h3 className="group-title">{t.tonight.groupDone}</h3>
+              טופל, ולא רשימה ריקה בלי הסבר. מכווץ כברירת מחדל - מה שעוד
+              צריך טיפול חשוב יותר מרשימה של מה שכבר טופל. */}
+          <summary className="group-title completed-summary">
+            {t.tonight.groupDone} ({groups.done.length})
+          </summary>
           {groups.done.map((plant) => (
             <PlantCard
               key={plant.id}
@@ -186,7 +189,7 @@ export function TonightScreen({ onManagePlants }: { onManagePlants: () => void }
               onOpen={() => setViewingHistory(plant)}
             />
           ))}
-        </section>
+        </details>
       )}
 
       {remaining === 0 && groups.done.length === 0 && groups.snoozed.length === 0 && (

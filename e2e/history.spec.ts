@@ -64,8 +64,10 @@ test.describe('watering history', () => {
     await seed(page, db)
     await page.goto('/')
 
-    // Tonight: the plant is watered today, tapping its card opens History -
-    // not the (removed, for this card) Water action.
+    // Tonight: a watered plant sits behind the collapsed "watered this
+    // evening" disclosure - open it before tapping the card, which opens
+    // History, not the (removed, for this card) Water action.
+    await page.locator('.completed-summary').click()
     const tonightCard = page.locator('.plant-card', { hasText: 'בזיליקום' })
     await expect(tonightCard).toBeVisible()
     await tonightCard.locator('.plant-main').click()
