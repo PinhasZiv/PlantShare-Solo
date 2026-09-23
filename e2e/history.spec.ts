@@ -80,8 +80,10 @@ test.describe('watering history', () => {
     await expect(sheet).toBeHidden()
 
     // Plants: tapping the card also opens History now (not Edit) - editing
-    // moved to its own pencil icon.
+    // moved to its own pencil icon. Watered plants collapse behind their own
+    // disclosure here too.
     await page.getByRole('button', { name: 'צמחים' }).click()
+    await page.locator('.completed-summary').click()
     const plantsCard = page.locator('.plant-card', { hasText: 'בזיליקום' })
     await plantsCard.locator('.plant-main').click()
     const sheet2 = page.locator('.sheet', { hasText: 'היסטוריית ההשקיה' })

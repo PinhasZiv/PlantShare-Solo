@@ -22,18 +22,28 @@ export function PlantsScreen() {
   const [viewingHistory, setViewingHistory] = useState<Plant | null>(null)
 
   const spacePlants = useMemo(
-    () =>
-      plants
-        .filter((plant) => plant.space_id === currentSpace?.id)
-        .sort((a, b) => {
-          // כל מה שדורש תשומת לב עולה למעלה; השאר לפי תאריך היעד הבא.
-          const aActive = classify(a, today).status !== 'upcoming'
-          const bActive = classify(b, today).status !== 'upcoming'
-          if (aActive !== bActive) return aActive ? -1 : 1
-          return a.next_due_date.localeCompare(b.next_due_date)
-        }),
-    [plants, currentSpace, today],
+    () => plants.filter((plant) => plant.space_id === currentSpace?.id),
+    [plants, currentSpace],
   )
+
+  // הושקו היום יורדים לקבוצה מכווצת משלהם, למטה - מה שעוד צריך תשומת לב
+  // חשוב יותר מרשימה של מה שכבר טופל.
+  const { openPlants, wateredTodayPlants } = useMemo(() => {
+    const open: Plant[] = []
+    const wateredToday: Plant[] = []
+    for (const plant of spacePlants) {
+      if (classify(plant, today).status === 'watered_today') wateredToday.push(plant)
+      else open.push(plant)
+    }
+    open.sort((a, b) => {
+      // כל מה שדורש תשומת לב עולה למעלה; השאר לפי תאריך היעד הבא.
+      const aActive = classify(a, today).status !== 'upcoming'
+      const bActive = classify(b, today).status !== 'upcoming'
+      if (aActive !== bActive) return aActive ? -1 : 1
+      return a.next_due_date.localeCompare(b.next_due_date)
+    })
+    return { openPlants: open, wateredTodayPlants: wateredToday }
+  }, [spacePlants, today])
 
   if (!currentSpace) return null
 
@@ -74,6 +84,21 @@ export function PlantsScreen() {
     toast.show(t.plants.deleted)
   }
 
+  function renderCard(plant: Plant) {
+    return (
+      <PlantCard
+        key={plant.id}
+        plant={plant}
+        today={today}
+        wateredBy={wateredByLabel(plant, people, session?.user.id ?? null, language)}
+        onWater={() => water(plant)}
+        onUnwater={plant.last_watered_by === session?.user.id ? () => unwater(plant) : undefined}
+        onOpen={() => setViewingHistory(plant)}
+        onEdit={() => setEditing(plant)}
+      />
+    )
+  }
+
   return (
     <div className="screen">
       <header className="screen-header">
@@ -93,22 +118,20 @@ export function PlantsScreen() {
           </button>
         </div>
       ) : (
-        <section className="plant-group">
-          {spacePlants.map((plant) => (
-            <PlantCard
-              key={plant.id}
-              plant={plant}
-              today={today}
-              wateredBy={wateredByLabel(plant, people, session?.user.id ?? null, language)}
-              onWater={() => water(plant)}
-              onUnwater={
-                plant.last_watered_by === session?.user.id ? () => unwater(plant) : undefined
-              }
-              onOpen={() => setViewingHistory(plant)}
-              onEdit={() => setEditing(plant)}
-            />
-          ))}
-        </section>
+        <>
+          {openPlants.length > 0 && (
+            <section className="plant-group">{openPlants.map(renderCard)}</section>
+          )}
+
+          {wateredTodayPlants.length > 0 && (
+            <details className="plant-group completed-group">
+              <summary className="group-title completed-summary">
+                {t.tonight.groupDone} ({wateredTodayPlants.length})
+              </summary>
+              {wateredTodayPlants.map(renderCard)}
+            </details>
+          )}
+        </>
       )}
 
       <button
