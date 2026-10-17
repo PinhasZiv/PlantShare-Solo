@@ -89,7 +89,7 @@ export function SpaceScreen() {
     <>
     <div className="screen">
       <header className="screen-header">
-        <h2>{t.space.title}</h2>
+        <h1>{t.space.title}</h1>
         <p className="screen-subtitle">{t.space.subtitle}</p>
       </header>
 

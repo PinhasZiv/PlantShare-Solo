@@ -102,7 +102,7 @@ export function PlantsScreen() {
   return (
     <div className="screen">
       <header className="screen-header">
-        <h2>{currentSpace.name}</h2>
+        <h1>{currentSpace.name}</h1>
         <p className="screen-subtitle">
           {spacePlants.length === 0
             ? t.plants.empty
