@@ -218,6 +218,21 @@ export async function cancelSnooze(plantId: string, userId: string): Promise<voi
   if (error) throw error
 }
 
+/** Every watering in a space with the due date it settled, newest first -
+ *  what the household's streak is counted from (see lib/streak.ts). */
+export async function fetchSpaceWaterings(
+  spaceId: string,
+): Promise<{ plant_id: string; watered_on: string; prev_next_due_date: string }[]> {
+  const { data, error } = await supabase
+    .from('watering_events')
+    .select('plant_id, watered_on, prev_next_due_date')
+    .eq('space_id', spaceId)
+    .order('watered_on', { ascending: false })
+    .limit(1000)
+  if (error) throw error
+  return data ?? []
+}
+
 /** Recent waterings for a plant, newest first. */
 export async function fetchHistory(plantId: string, limit = 20): Promise<WateringHistoryEntry[]> {
   const { data, error } = await supabase

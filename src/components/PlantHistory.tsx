@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import * as api from '../lib/api'
-import { formatDate, personLabel } from '../lib/format'
+import { describePeriod, formatDate, personLabel, relativeDay } from '../lib/format'
 import { useI18n } from '../lib/i18n'
 import { useApp } from '../state/AppState'
 import type { Plant, WateringHistoryEntry } from '../lib/types'
@@ -17,7 +17,7 @@ interface PlantHistoryProps {
  * לגבי אותה השקיה כאילו לא קרתה.
  */
 export function PlantHistory({ plant, onClose }: PlantHistoryProps) {
-  const { people, session } = useApp()
+  const { people, session, today } = useApp()
   const { t, language } = useI18n()
   const toast = useToast()
   const selfId = session?.user.id ?? null
@@ -43,6 +43,22 @@ export function PlantHistory({ plant, onClose }: PlantHistoryProps) {
     <div className="sheet-backdrop" onClick={onClose} role="presentation">
       <div className="sheet" onClick={(event) => event.stopPropagation()}>
         <h2>{t.history.title(plant.name)}</h2>
+
+        {/* What the card leaves out to stay short: how often, and exactly when next. */}
+        <dl className="plant-details">
+          <dt>{t.history.period}</dt>
+          <dd>{describePeriod(plant.period_days, language)}</dd>
+          <dt>{t.history.next}</dt>
+          <dd>
+            {formatDate(plant.next_due_date, language)} · {relativeDay(plant.next_due_date, today, language)}
+          </dd>
+          {plant.notes && (
+            <>
+              <dt>{t.history.notes}</dt>
+              <dd className="plant-details-notes">{plant.notes}</dd>
+            </>
+          )}
+        </dl>
 
         {entries === null ? (
           <p className="muted">{t.common.loading}</p>
