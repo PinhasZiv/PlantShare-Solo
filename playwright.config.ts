@@ -12,6 +12,9 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:5183',
     trace: 'retain-on-failure',
+    // Matches the fake profile's own timezone, so "today" in the browser is
+    // the same day the app and the tests count from.
+    timezoneId: 'Asia/Jerusalem',
     // Environments without a pre-fetched browser matching this exact
     // @playwright/test version still have a working Chromium at this fixed
     // path - use it instead of trying to download a new one.
