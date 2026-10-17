@@ -141,6 +141,20 @@ export async function installSupabaseMock(page: Page, db: FakeDb): Promise<void>
 
     if (table === 'push_subscriptions') return json(route, [])
 
+    if (table === 'space_members' && method === 'GET') {
+      // fetchMembers(): the signed-in person (who made the space) and
+      // everyone in otherPeople, each with their profile embedded.
+      const self = { id: db.profile.id, display_name: db.profile.display_name, avatar_url: db.profile.avatar_url, email: db.profile.email }
+      const members = [
+        { user_id: self.id, role: 'owner', profile: self },
+        ...db.otherPeople.map((person) => ({ user_id: person.id, role: 'member', profile: person })),
+      ]
+      return json(
+        route,
+        members.map((member, i) => ({ space_id: db.spaces[0]?.id, joined_at: new Date(Date.UTC(2026, 0, 1 + i)).toISOString(), ...member })),
+      )
+    }
+
     return json(route, { message: `unmocked request: ${method} ${url.pathname}${url.search}` }, 404)
   })
 

@@ -23,6 +23,11 @@
   --late-soft: #fbe9e4;
   --due: #9a6a10;
   --due-soft: #fdf2dc;
+  /* Text and icons drawn on a solid --accent or --late fill. White works on
+     the light theme's deep colours; the dark theme's are pale, so it takes
+     dark text there (white on them was 2.4:1). */
+  --on-accent: #ffffff;
+  --on-late: #ffffff;
   --radius: 14px;
   --shadow: 0 1px 2px rgb(20 32 27 / 0.06), 0 4px 14px rgb(20 32 27 / 0.05);
   color-scheme: light;
@@ -44,6 +49,8 @@
     --late-soft: #3a1c14;
     --due: #e8bd6a;
     --due-soft: #33280f;
+    --on-accent: #08140e;
+    --on-late: #2a0a05;
     --shadow: none;
     color-scheme: dark;
   }
@@ -122,6 +129,8 @@ code {
 .screen { padding: 16px 16px 8px; }
 
 .screen-header { margin-bottom: 18px; }
+/* Each screen's title is its h1 for screen readers, at the size it always had. */
+.screen-header h1 { font-size: 1.35rem; }
 
 .screen-subtitle {
   color: var(--text-muted);
@@ -211,6 +220,11 @@ code {
 /* צמחים שהושקו מתכווצים מאחורי <details> מובנה - סגור כברירת מחדל, כי מה
    שעוד צריך טיפול חשוב יותר מרשומה של מה שכבר טופל. */
 .completed-summary {
+  /* The whole row is the tap target, not just the line of text. */
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  margin-bottom: 0;
   cursor: pointer;
   user-select: none;
   list-style: none;
@@ -266,7 +280,7 @@ code {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--on-accent);
   transition: transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1), background 120ms ease-out, border-color 120ms ease-out;
 }
 
@@ -326,7 +340,7 @@ code {
 }
 
 .badge {
-  font-size: 0.74rem;
+  font-size: 0.8rem;
   font-weight: 650;
   padding: 3px 8px;
   border-radius: 999px;
@@ -337,7 +351,7 @@ code {
 .badge-due { background: var(--accent-soft); color: var(--accent-strong); }
 
 .chip {
-  font-size: 0.74rem;
+  font-size: 0.8rem;
   padding: 2px 7px;
   border-radius: 999px;
   background: var(--surface-2);
@@ -397,7 +411,7 @@ code {
   min-height: 46px;
 }
 
-.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary { background: var(--accent); color: var(--on-accent); }
 .btn-primary:active { background: var(--accent-strong); }
 .btn-primary:disabled { opacity: 0.55; }
 
@@ -413,10 +427,10 @@ code {
  * than just the person tapping it (deleting a shared space for everyone,
  * say) - kept visually distinct from btn-danger-text's plain link styling,
  * which stays reserved for a destructive action that only affects yourself. */
-.btn-danger { background: var(--late); color: #fff; }
+.btn-danger { background: var(--late); color: var(--on-late); }
 .btn-danger:active { background: var(--late-strong); }
 
-.btn-small { min-height: 38px; padding: 8px 12px; font-size: 0.9rem; }
+.btn-small { min-height: 44px; padding: 8px 12px; font-size: 0.9rem; }
 
 .btn-google {
   background: var(--surface);
@@ -436,7 +450,7 @@ code {
   border-radius: 50%;
   border: 0;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   display: grid;
   place-items: center;
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.22);
@@ -470,7 +484,7 @@ code {
   border: 0;
   background: none;
   color: var(--text-muted);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
@@ -586,6 +600,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .preset-row { display: flex; flex-wrap: wrap; gap: 7px; }
 
 .preset {
+  min-height: 44px;
+  min-width: 44px;
   padding: 8px 13px;
   border-radius: 999px;
   border: 1px solid var(--border);
@@ -594,7 +610,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   font-size: 0.88rem;
 }
 
-.preset-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.preset-active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
 .code-input {
   /* Invite codes are Latin letters and digits: always left to right. */
@@ -617,6 +633,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 
 .segment {
   flex: 1;
+  min-height: 44px;
   padding: 9px;
   border: 0;
   border-radius: 9px;
@@ -629,7 +646,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 
 .space-select {
   width: auto;
-  min-height: 38px;
+  min-height: 44px;
   padding: 6px 10px;
   font-size: 0.9rem;
   max-width: 55%;

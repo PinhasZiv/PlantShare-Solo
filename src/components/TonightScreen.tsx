@@ -106,7 +106,7 @@ export function TonightScreen({ onManagePlants }: { onManagePlants: () => void }
   return (
     <div className="screen">
       <header className="screen-header">
-        <h2>{remaining > 0 ? t.tonight.titleActive : t.tonight.titleDone}</h2>
+        <h1>{remaining > 0 ? t.tonight.titleActive : t.tonight.titleDone}</h1>
         <p className="screen-subtitle">
           {remaining > 0
             ? t.tonight.needWater(remaining)

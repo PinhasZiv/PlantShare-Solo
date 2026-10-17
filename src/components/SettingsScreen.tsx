@@ -86,7 +86,7 @@ export function SettingsScreen() {
   return (
     <div className="screen">
       <header className="screen-header">
-        <h2>{t.settings.title}</h2>
+        <h1>{t.settings.title}</h1>
       </header>
 
       <section className="card">
