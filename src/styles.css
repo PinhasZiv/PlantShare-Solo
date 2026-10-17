@@ -68,7 +68,9 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans Hebrew',
+  /* Rubik ships with the app, as in HouseHero (only the Hebrew and Latin
+     files a screen uses are downloaded, then cached); the rest is fallback. */
+  font-family: 'Rubik Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans Hebrew',
     'Arial Hebrew', Arial, sans-serif;
   font-size: 16px;
   line-height: 1.45;
@@ -574,6 +576,8 @@ code {
 .sheet-actions .btn { flex: 1; }
 
 /* ----------------------------------------------------------- history --- */
+
+.history-summary { margin: 0 0 6px; }
 
 .history-list {
   list-style: none;

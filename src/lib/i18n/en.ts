@@ -95,6 +95,13 @@ export const en: Strings = {
     notes: 'Notes',
     title: (name: string) => `${name}'s watering history`,
     empty: 'Not watered yet.',
+    rhythm: {
+      prefix: 'Last 60 days:',
+      early: (n: number) => `${n} early`,
+      onTime: (n: number) => `${n} on time`,
+      late: (n: number) => `${n} late`,
+      actual: (period: string) => `actually ${period}`,
+    },
   },
 
   snooze: {

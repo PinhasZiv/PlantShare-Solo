@@ -65,6 +65,8 @@ export interface WateringHistoryEntry {
   user_id: string
   watered_on: string
   created_at: string
+  /** The due date this watering settled - what tells early, on time and late apart. */
+  prev_next_due_date: string | null
 }
 
 /**

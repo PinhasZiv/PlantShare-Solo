@@ -96,6 +96,13 @@ export const he = {
     notes: 'הערות',
     title: (name: string) => `היסטוריית ההשקיה של ${name}`,
     empty: 'עוד לא הושקה אף פעם.',
+    rhythm: {
+      prefix: 'ב-60 הימים האחרונים:',
+      early: (n: number) => `${n} לפני הזמן`,
+      onTime: (n: number) => `${n} בזמן`,
+      late: (n: number) => `${n} באיחור`,
+      actual: (period: string) => `בפועל ${period}`,
+    },
   },
 
   snooze: {

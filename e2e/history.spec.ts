@@ -122,4 +122,44 @@ test.describe('watering history', () => {
     await page.locator('.plant-card', { hasText: 'נענע' }).locator('.plant-main').click()
     await expect(page.getByText('עוד לא הושקה אף פעם.')).toBeVisible()
   })
+
+  test('sums up the last sixty days above the list: on time, late, and how often in practice', async ({ page }) => {
+    // Every 4 days; the third of these came two days late.
+    const waterings = [0, -4, -8, -14, -18].map((offset, i) => ({
+      id: `w${i}`,
+      plant_id: 'plant-fern',
+      user_id: FAKE_USER_ID,
+      watered_on: isoDaysFromToday(offset),
+      prev_next_due_date: isoDaysFromToday(offset === -8 ? -10 : offset),
+      created_at: new Date(Date.now() + offset * 86_400_000).toISOString(),
+    }))
+    // An old one, outside the window - in the list, not in the count.
+    waterings.push({ ...waterings[0], id: 'old', watered_on: isoDaysFromToday(-90), prev_next_due_date: isoDaysFromToday(-95), created_at: new Date(Date.now() - 90 * 86_400_000).toISOString() })
+    const db = makeFakeDb({
+      plants: [
+        {
+          id: 'plant-fern',
+          space_id: FAKE_SPACE_ID,
+          name: 'שרך',
+          period_days: 4,
+          next_due_date: isoDaysFromToday(4),
+          last_watered_date: isoDaysFromToday(0),
+          last_watered_by: FAKE_USER_ID,
+          notes: null,
+          created_by: FAKE_USER_ID,
+          created_at: new Date().toISOString(),
+        },
+      ],
+      wateringEvents: waterings,
+    })
+    await seed(page, db)
+    await page.goto('/')
+    await page.getByRole('button', { name: 'צמחים' }).click()
+    await page.locator('.completed-summary').click()
+    await page.locator('.plant-card', { hasText: 'שרך' }).locator('.plant-main').click()
+
+    const sheet = page.locator('.sheet', { hasText: 'היסטוריית ההשקיה' })
+    await expect(sheet.locator('.history-summary')).toHaveText('ב-60 הימים האחרונים: 4 בזמן · 1 באיחור · בפועל כל 4 ימים')
+    await expect(sheet.locator('.history-row')).toHaveCount(6)
+  })
 })

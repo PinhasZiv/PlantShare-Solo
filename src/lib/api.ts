@@ -234,10 +234,12 @@ export async function fetchSpaceWaterings(
 }
 
 /** Recent waterings for a plant, newest first. */
-export async function fetchHistory(plantId: string, limit = 20): Promise<WateringHistoryEntry[]> {
+/** Enough waterings for a daily plant's last sixty days (see lib/history.ts);
+ *  the history list itself shows only the newest of them. */
+export async function fetchHistory(plantId: string, limit = 100): Promise<WateringHistoryEntry[]> {
   const { data, error } = await supabase
     .from('watering_events')
-    .select('id, watered_on, user_id, created_at')
+    .select('id, watered_on, user_id, created_at, prev_next_due_date')
     .eq('plant_id', plantId)
     .order('created_at', { ascending: false })
     .limit(limit)
