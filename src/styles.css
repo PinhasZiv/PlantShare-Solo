@@ -28,6 +28,9 @@
      dark text there (white on them was 2.4:1). */
   --on-accent: #ffffff;
   --on-late: #ffffff;
+  /* Water: everything that says a plant got it - the checked box, the
+     progress ring, the history's tick. Green stays the plant's colour. */
+  --water: #2f7fc1;
   --radius: 14px;
   --shadow: 0 1px 2px rgb(20 32 27 / 0.06), 0 4px 14px rgb(20 32 27 / 0.05);
   color-scheme: light;
@@ -51,6 +54,7 @@
     --due-soft: #33280f;
     --on-accent: #08140e;
     --on-late: #2a0a05;
+    --water: #5aa7e6;
     --shadow: none;
     color-scheme: dark;
   }
@@ -131,6 +135,43 @@ code {
 .screen-header { margin-bottom: 18px; }
 /* Each screen's title is its h1 for screen readers, at the size it always had. */
 .screen-header h1 { font-size: 1.35rem; }
+
+/* Tonight's progress and the household's streak, above the lists. */
+.tonight-progress {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: -4px 0 18px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.tonight-progress-ring { flex: none; }
+.tonight-progress-track { stroke: var(--surface-2); }
+.tonight-progress-fill { stroke: var(--water); transition: stroke-dashoffset 400ms ease-out; }
+.tonight-progress-count { fill: var(--text); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tonight-progress-text { min-width: 0; }
+.tonight-progress-title { font-weight: 650; }
+.tonight-progress-details { color: var(--text-muted); font-size: 0.86rem; }
+@media (prefers-reduced-motion: reduce) {
+  .tonight-progress-fill { transition: none; }
+}
+
+/* The plant's own facts at the top of its history sheet. */
+.plant-details {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+}
+.plant-details dt { color: var(--text-muted); }
+.plant-details dd { margin: 0; font-weight: 600; min-width: 0; }
+.plant-details-notes { font-weight: 400; white-space: pre-wrap; unicode-bidi: plaintext; }
 
 .screen-subtitle {
   color: var(--text-muted);
@@ -285,7 +326,7 @@ code {
 }
 
 .plant-checkbox:active .plant-checkbox-circle { transform: scale(0.85); }
-.plant-checkbox-checked .plant-checkbox-circle { background: var(--accent); border-color: var(--accent); }
+.plant-checkbox-checked .plant-checkbox-circle { background: var(--water); border-color: var(--water); }
 .plant-checkbox:disabled { opacity: 0.5; }
 
 .plant-main {
@@ -308,9 +349,13 @@ code {
 }
 
 .plant-headline h3 {
+  /* A long name wraps rather than losing its end - two plants starting with
+     the same word must still be told apart - and stops at two lines. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 /* A plant may be called "בזיליקום" or "Monstera". plaintext lets each name

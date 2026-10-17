@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import { classify } from '../lib/due'
+import { classify, daysBetween } from '../lib/due'
 import {
-  describePeriod,
-  formatDate,
   formatSnoozeUntil,
   personLabel,
   relativeDay,
@@ -19,6 +17,9 @@ interface PlantCardProps {
   plant: Plant
   today: string
   spaceName?: string
+  /** Leaves out the "tonight" badge - for a list whose own heading already
+   *  says every card in it is due. */
+  hideDueBadge?: boolean
   wateredBy?: WateredBy
   onWater?: () => Promise<void>
   /**
@@ -47,6 +48,7 @@ export function PlantCard({
   plant,
   today,
   spaceName,
+  hideDueBadge = false,
   wateredBy,
   onWater,
   onUnwater,
@@ -125,30 +127,31 @@ export function PlantCard({
           {info.status === 'late' && (
             <span className="badge badge-late">{t.plant.badgeLate(info.daysLate)}</span>
           )}
-          {info.status === 'due' && (
+          {info.status === 'due' && !hideDueBadge && (
             <span className="badge badge-due">{t.plant.badgeDue}</span>
           )}
         </div>
 
         <p className="plant-meta">
           {spaceName && <span className="chip">{spaceName}</span>}
-          <span>{describePeriod(plant.period_days, language)}</span>
           {snoozedUntil ? (
             <span>{t.plant.snoozedUntil(formatSnoozeUntil(snoozedUntil, today, language))}</span>
           ) : info.status === 'watered_today' ? (
-            <>
-              <span>
-                {!wateredBy || wateredBy.kind === 'you'
-                  ? t.plant.wateredByYou
-                  : t.plant.wateredBy(wateredBy.name ?? t.plant.someoneElse)}
-              </span>
-              <span>{t.plant.nextIn(relativeDay(plant.next_due_date, today, language))}</span>
-            </>
+            // One line of text, not two items: a separator between items can
+            // wrap to the start of the next line on its own.
+            <span>
+              {!wateredBy || wateredBy.kind === 'you'
+                ? t.plant.wateredByYou
+                : t.plant.wateredBy(wateredBy.name ?? t.plant.someoneElse)}
+              {' · '}
+              {t.plant.nextIn(relativeDay(plant.next_due_date, today, language))}
+            </span>
           ) : info.status === 'upcoming' ? (
-            <span>{t.plant.nextOn(formatDate(plant.next_due_date, language))}</span>
-          ) : (
-            <span>{t.plant.dueOn(formatDate(plant.next_due_date, language))}</span>
-          )}
+            <span className="plant-countdown">{t.plant.countdown(daysBetween(today, plant.next_due_date))}</span>
+          ) : null
+          // Due tonight or late already says so in its badge and its list;
+          // how often and the exact date are in the details sheet.
+          }
         </p>
       </button>
 

@@ -46,6 +46,10 @@ export const en: Strings = {
   },
 
   tonight: {
+    progress: (watered: number, total: number) => `${watered} of ${total} watered tonight`,
+    progressLeft: (n: number) => (n === 1 ? 'One more and tonight is done' : `${n} more and tonight is done`),
+    progressDone: 'Every plant for tonight is watered',
+    streak: (n: number) => `${days(n, 'en')} in a row`,
     titleActive: 'Tonight',
     titleDone: 'All done',
     needWater: (n: number) => `${plantCount(n, 'en')} ${n === 1 ? 'needs' : 'need'} water`,
@@ -65,6 +69,7 @@ export const en: Strings = {
   },
 
   plant: {
+    countdown: (n: number) => (n === 1 ? 'Tomorrow' : `In ${days(n, 'en')}`),
     waterAria: (name: string) => `Mark ${name} as watered`,
     badgeLate: (n: number) => `${days(n, 'en')} late`,
     badgeDue: 'tonight',
@@ -85,6 +90,9 @@ export const en: Strings = {
   },
 
   history: {
+    period: 'How often',
+    next: 'Next watering',
+    notes: 'Notes',
     title: (name: string) => `${name}'s watering history`,
     empty: 'Not watered yet.',
   },

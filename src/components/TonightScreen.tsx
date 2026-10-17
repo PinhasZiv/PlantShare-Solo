@@ -6,6 +6,8 @@ import { useWatering } from '../state/useWatering'
 import { PlantCard, wateredByLabel } from './PlantCard'
 import { PlantHistory } from './PlantHistory'
 import { SnoozeSheet } from './SnoozeSheet'
+import { TonightProgress } from './TonightProgress'
+import { useHouseStreak } from '../state/useHouseStreak'
 import { formatDate } from '../lib/format'
 import { useI18n, type Language, type Strings } from '../lib/i18n'
 import type { Plant } from '../lib/types'
@@ -34,6 +36,7 @@ export function TonightScreen({ onManagePlants }: { onManagePlants: () => void }
   const { t, language } = useI18n()
   const { water, unwater } = useWatering()
   const { snooze, cancelSnooze } = useSnooze()
+  const pastStreak = useHouseStreak()
   const selfId = session?.user.id ?? null
 
   const [sheetTargets, setSheetTargets] = useState<Plant[] | null>(null)
@@ -90,6 +93,11 @@ export function TonightScreen({ onManagePlants }: { onManagePlants: () => void }
   const showSpaceNames = spaces.length > 1
 
   const remaining = groups.late.length + groups.due.length
+  // Tonight's whole list: what got water, what is waiting, and what was put
+  // off for a while but still needs it tonight.
+  const wateredTonight = groups.done.length
+  const totalTonight = wateredTonight + remaining + groups.snoozed.length
+  const streak = pastStreak === null ? null : pastStreak + (totalTonight > 0 && wateredTonight === totalTonight ? 1 : 0)
 
   if (plants.length === 0) {
     return (
@@ -118,6 +126,8 @@ export function TonightScreen({ onManagePlants }: { onManagePlants: () => void }
         </p>
       </header>
 
+      {totalTonight > 0 && <TonightProgress watered={wateredTonight} total={totalTonight} streak={streak} />}
+
       {groups.late.length > 0 && (
         <section className="plant-group">
           <h3 className="group-title group-title-late">{t.tonight.groupLate}</h3>
@@ -143,6 +153,7 @@ export function TonightScreen({ onManagePlants }: { onManagePlants: () => void }
               key={plant.id}
               plant={plant}
               today={today}
+              hideDueBadge
               spaceName={showSpaceNames ? spaceNames.get(plant.space_id) : undefined}
               onWater={() => water(plant)}
               onSnooze={() => setSheetTargets([plant])}

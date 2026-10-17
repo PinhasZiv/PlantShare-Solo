@@ -37,7 +37,9 @@ export interface FakeDb {
   spaces: { id: string; name: string; invite_code: string; created_by: string; created_at: string }[]
   plants: FakePlant[]
   snoozes: Map<string, string> // plant_id -> snoozed_until, this user only
-  wateringEvents: { id: string; plant_id: string; user_id: string; watered_on: string; created_at: string }[]
+  /** prev_next_due_date - the due date the watering settled - defaults to
+   *  watered_on itself (on time) when a test does not care about lateness. */
+  wateringEvents: { id: string; plant_id: string; user_id: string; watered_on: string; created_at: string; prev_next_due_date?: string }[]
   /** Other space members fetchPeople() should resolve names for - the signed-in user's own profile is always included automatically. */
   otherPeople: { id: string; display_name: string | null; avatar_url: string | null; email: string | null }[]
 }
@@ -92,6 +94,31 @@ export async function installSupabaseMock(page: Page, db: FakeDb): Promise<void>
     const method = request.method()
     const wantsSingle = (request.headers()['accept'] ?? '').includes('vnd.pgrst.object')
 
+    if (table === 'mark_watered' && method === 'POST') {
+      // mark_watered() - see 0001_init.sql: records the watering with the due
+      // date it settled, then moves the plant on from the day it got water.
+      const body = request.postDataJSON() as { p_plant: string; p_today: string }
+      const target = db.plants.find((p) => p.id === body.p_plant)
+      if (!target) return json(route, { message: 'no_such_plant' }, 404)
+      const event = {
+        id: `w-${db.wateringEvents.length + 1}-${Date.now()}`,
+        plant_id: target.id,
+        space_id: target.space_id,
+        user_id: db.profile.id,
+        watered_on: body.p_today,
+        prev_next_due_date: target.next_due_date,
+        prev_last_watered_date: target.last_watered_date,
+        prev_last_watered_by: target.last_watered_by,
+        created_at: new Date().toISOString(),
+      }
+      db.wateringEvents.push(event)
+      const [y, m, d] = body.p_today.split('-').map(Number)
+      target.next_due_date = new Date(Date.UTC(y, m - 1, d + target.period_days)).toISOString().slice(0, 10)
+      target.last_watered_date = body.p_today
+      target.last_watered_by = db.profile.id
+      return json(route, wantsSingle ? event : [event])
+    }
+
     if (table === 'profiles' && method === 'GET') {
       const idFilter = eqValue(url, 'id')
       const select = url.searchParams.get('select') ?? ''
@@ -129,6 +156,16 @@ export async function installSupabaseMock(page: Page, db: FakeDb): Promise<void>
         if (plantId) db.snoozes.delete(plantId)
         return json(route, [])
       }
+    }
+
+    if (table === 'watering_events' && method === 'GET' && eqValue(url, 'space_id')) {
+      // fetchSpaceWaterings(): every watering of the space's plants.
+      const spaceId = eqValue(url, 'space_id')
+      const rows = db.wateringEvents
+        .filter((row) => db.plants.find((p) => p.id === row.plant_id)?.space_id === spaceId)
+        .map((row) => ({ plant_id: row.plant_id, watered_on: row.watered_on, prev_next_due_date: row.prev_next_due_date ?? row.watered_on }))
+        .sort((a, b) => b.watered_on.localeCompare(a.watered_on))
+      return json(route, rows)
     }
 
     if (table === 'watering_events' && method === 'GET') {

@@ -47,6 +47,10 @@ export const he = {
   },
 
   tonight: {
+    progress: (watered: number, total: number) => `${watered} מתוך ${total} הושקו הערב`,
+    progressLeft: (n: number) => (n === 1 ? 'עוד אחד והערב סגור' : `עוד ${n} והערב סגור`),
+    progressDone: 'כל הצמחים של הערב הושקו',
+    streak: (n: number) => `רצף של ${days(n, 'he')}`,
     titleActive: 'הערב',
     titleDone: 'הכול בוצע',
     needWater: (n: number) => `${plantCount(n, 'he')} ${n === 1 ? 'ממתין' : 'ממתינים'} להשקיה`,
@@ -66,6 +70,7 @@ export const he = {
   },
 
   plant: {
+    countdown: (n: number) => (n === 1 ? 'מחר' : `עוד ${days(n, 'he')}`),
     waterAria: (name: string) => `סימון ${name} כמושקה`,
     badgeLate: (n: number) => `איחור של ${days(n, 'he')}`,
     badgeDue: 'הערב',
@@ -86,6 +91,9 @@ export const he = {
   },
 
   history: {
+    period: 'תדירות',
+    next: 'ההשקיה הבאה',
+    notes: 'הערות',
     title: (name: string) => `היסטוריית ההשקיה של ${name}`,
     empty: 'עוד לא הושקה אף פעם.',
   },
