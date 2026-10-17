@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import '@fontsource-variable/rubik/wght.css'
 import './styles.css'
 
 // A tapped notification normally moves this page to its space through the
