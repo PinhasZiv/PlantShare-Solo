@@ -14,7 +14,7 @@ import { getLanguage, isLanguage, setLanguage, t } from '../lib/i18n'
 import { restorePushIfGranted } from '../lib/push'
 import { reconcileReloadedPlants } from '../lib/reconcilePlants'
 import { COLD_START_RETRY_DELAYS_MS, withRetry } from '../lib/retry'
-import { supabase } from '../lib/supabase'
+import { DB_SCHEMA, supabase } from '../lib/supabase'
 import { todayIn } from '../lib/due'
 import * as api from '../lib/api'
 import type { Plant, Profile, Space } from '../lib/types'
@@ -195,7 +195,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!userId) return
     const channel = supabase
       .channel('plants-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'plants' }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: DB_SCHEMA, table: 'plants' }, (payload) => {
         if (payload.eventType === 'DELETE') {
           const removedId = (payload.old as Plant).id
           touchedPlantIdsRef.current.add(removedId)

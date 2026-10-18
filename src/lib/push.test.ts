@@ -103,7 +103,7 @@ describe('sendTestNotification', () => {
 
     const result = await sendTestNotification()
     expect(result.ok).toBe(false)
-    expect(result.message).toBe('לא הצלחתי להגיע לשרת. האם הפונקציה send-test הועלתה?')
+    expect(result.message).toBe('לא הצלחתי להגיע לשרת. האם הפונקציה plantshare-send-test הועלתה?')
   })
 })
 

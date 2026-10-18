@@ -31,7 +31,11 @@ const url = normalizeSupabaseUrl(rawUrl)
 export const isConfigured =
   Boolean(url && anonKey) && !url.startsWith('PASTE_') && !anonKey.startsWith('PASTE_')
 
+/** PlantShare's tables live in this schema of a project shared with HouseHero. */
+export const DB_SCHEMA = 'plantshare'
+
 export const supabase = createClient(isConfigured ? url : 'http://localhost:54321', anonKey, {
+  db: { schema: DB_SCHEMA },
   auth: {
     persistSession: true,
     autoRefreshToken: true,

@@ -167,7 +167,7 @@ async function readFunctionErrorReason(error: FunctionsHttpError): Promise<strin
 
 /** Asks the server to push one notification to this account's devices now. */
 export async function sendTestNotification(): Promise<{ ok: boolean; message: string }> {
-  const { data, error } = await supabase.functions.invoke('send-test', { body: {} })
+  const { data, error } = await supabase.functions.invoke('plantshare-send-test', { body: {} })
   if (error) {
     // A non-2xx response (auth rejected, nothing to push to, the server-side
     // setup missing) is a FunctionsHttpError with the real reason inside its
