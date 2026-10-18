@@ -234,7 +234,7 @@ export const en: Strings = {
         'The app was built without a notification key, so reminders cannot be delivered. See SETUP.md.',
     },
     test: {
-      noServer: 'Could not reach the server. Is the send-test function deployed?',
+      noServer: 'Could not reach the server. Is the plantshare-send-test function deployed?',
       notSignedIn: 'Your sign-in has expired. Try signing out and back in, then try again.',
       notConfigured: 'The server-side setup is missing. Run the setup script against the database.',
       serverError: 'The server returned an error. Try again in a moment.',

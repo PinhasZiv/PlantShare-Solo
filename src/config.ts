@@ -17,10 +17,11 @@
  * supabase-js מוסיף את הנתיבים בעצמו, וכתובת עם /rest/v1/ בסוף שוברת גם את
  * ההתחברות וגם את כל הקריאות למסד הנתונים.
  */
-export const SUPABASE_URL = 'https://qskcwqknqwswqfnbmbxf.supabase.co'
+// PlantShare שוכן בסכמה plantshare בפרויקט של HouseHero (ראו README).
+export const SUPABASE_URL = 'https://axamojjnbhygnclqihhe.supabase.co'
 
 /** המפתח הציבורי (anon / publishable), מתחיל ב-eyJ או ב-sb_publishable_ */
-export const SUPABASE_ANON_KEY = 'sb_publishable_UasoX0Oftpo4lsUrOxY4ZA_o8yYMxwy'
+export const SUPABASE_ANON_KEY = 'sb_publishable_pFs3YH-azLKt3ZeD7Pzq0Q_5WH6qNqe'
 
 // ----------------------------------------------------------------------------
 // מכאן והלאה כבר מוגדר. אין צורך לגעת.
