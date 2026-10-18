@@ -3,8 +3,8 @@
 
 -- ⬇️  שני הערכים שצריך למלא  ⬇️
 
-create schema if not exists private_setup;
-create or replace function private_setup.values()
+create schema if not exists plantshare_private;
+create or replace function plantshare_private.values()
 returns table (project_ref text, vapid_private_key text, contact_email text)
 language sql immutable as $$
   select
@@ -23,9 +23,12 @@ $$;
 
 create extension if not exists "pgcrypto";
 
+-- הכל בסכמה plantshare: הפרויקט משותף עם HouseHero.
+create schema if not exists plantshare;
+
 -- profiles --
 
-create table if not exists public.profiles (
+create table if not exists plantshare.profiles (
   id              uuid primary key references auth.users(id) on delete cascade,
   email           text,
   display_name    text,
@@ -37,15 +40,13 @@ create table if not exists public.profiles (
 );
 
 -- שפת הממשק. nullable כדי לא לדרוס את שפת הדפדפן; alter נפרד למסד קיים.
-alter table public.profiles
+alter table plantshare.profiles
   add column if not exists language text check (language in ('he', 'en'));
 
--- Every signed-in user gets a profile row, so the app never meets a
--- "signed in but no profile" state.
-create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer set search_path = public as $$
+create or replace function plantshare.handle_new_user()
+returns trigger language plpgsql security definer set search_path = plantshare as $$
 begin
-  insert into public.profiles (id, email, display_name, avatar_url)
+  insert into plantshare.profiles (id, email, display_name, avatar_url)
   values (
     new.id,
     new.email,
@@ -57,14 +58,15 @@ begin
 end;
 $$;
 
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
+-- שם ייחודי: הפרויקט משותף עם HouseHero, שיש לו טריגר משלו על auth.users.
+drop trigger if exists on_auth_user_created_plantshare on auth.users;
+create trigger on_auth_user_created_plantshare
   after insert on auth.users
-  for each row execute function public.handle_new_user();
+  for each row execute function plantshare.handle_new_user();
 
 -- spaces --
 
-create table if not exists public.spaces (
+create table if not exists plantshare.spaces (
   id          uuid primary key default gen_random_uuid(),
   name        text not null check (length(trim(name)) between 1 and 60),
   invite_code text not null unique,
@@ -72,22 +74,22 @@ create table if not exists public.spaces (
   created_at  timestamptz not null default now()
 );
 
-create table if not exists public.space_members (
-  space_id  uuid not null references public.spaces(id) on delete cascade,
+create table if not exists plantshare.space_members (
+  space_id  uuid not null references plantshare.spaces(id) on delete cascade,
   -- profiles, not auth.users, so PostgREST can embed the names in one query.
-  user_id   uuid not null references public.profiles(id) on delete cascade,
+  user_id   uuid not null references plantshare.profiles(id) on delete cascade,
   role      text not null default 'member' check (role in ('owner', 'member')),
   joined_at timestamptz not null default now(),
   primary key (space_id, user_id)
 );
 
-create index if not exists space_members_user_idx on public.space_members(user_id);
+create index if not exists space_members_user_idx on plantshare.space_members(user_id);
 
 -- plants --
 
-create table if not exists public.plants (
+create table if not exists plantshare.plants (
   id                uuid primary key default gen_random_uuid(),
-  space_id          uuid not null references public.spaces(id) on delete cascade,
+  space_id          uuid not null references plantshare.spaces(id) on delete cascade,
   name              text not null check (length(trim(name)) between 1 and 80),
   period_days       smallint not null check (period_days between 1 and 365),
   next_due_date     date not null,
@@ -98,14 +100,13 @@ create table if not exists public.plants (
   created_at        timestamptz not null default now()
 );
 
-create index if not exists plants_space_idx on public.plants(space_id);
-create index if not exists plants_due_idx on public.plants(next_due_date);
+create index if not exists plants_space_idx on plantshare.plants(space_id);
+create index if not exists plants_due_idx on plantshare.plants(next_due_date);
 
--- Carries the pre-watering state so undo restores it exactly.
-create table if not exists public.watering_events (
+create table if not exists plantshare.watering_events (
   id                     uuid primary key default gen_random_uuid(),
-  plant_id               uuid not null references public.plants(id) on delete cascade,
-  space_id               uuid not null references public.spaces(id) on delete cascade,
+  plant_id               uuid not null references plantshare.plants(id) on delete cascade,
+  space_id               uuid not null references plantshare.spaces(id) on delete cascade,
   user_id                uuid not null references auth.users(id) on delete cascade,
   watered_on             date not null,
   prev_next_due_date     date not null,
@@ -114,11 +115,11 @@ create table if not exists public.watering_events (
   created_at             timestamptz not null default now()
 );
 
-create index if not exists watering_events_plant_idx on public.watering_events(plant_id, created_at desc);
+create index if not exists watering_events_plant_idx on plantshare.watering_events(plant_id, created_at desc);
 
 -- pushing --
 
-create table if not exists public.push_subscriptions (
+create table if not exists plantshare.push_subscriptions (
   id            uuid primary key default gen_random_uuid(),
   user_id       uuid not null references auth.users(id) on delete cascade,
   endpoint      text not null unique,
@@ -130,11 +131,9 @@ create table if not exists public.push_subscriptions (
   failure_count smallint not null default 0
 );
 
-create index if not exists push_subscriptions_user_idx on public.push_subscriptions(user_id);
+create index if not exists push_subscriptions_user_idx on plantshare.push_subscriptions(user_id);
 
--- The duplicate guard: one reminder per user per local day, however many
--- times the cron fires or overlaps.
-create table if not exists public.notification_log (
+create table if not exists plantshare.notification_log (
   user_id    uuid not null references auth.users(id) on delete cascade,
   local_date date not null,
   kind       text not null,
@@ -147,34 +146,33 @@ create table if not exists public.notification_log (
 
 -- SECURITY DEFINER so an RLS policy can ask "is this person a member?"
 -- without re-triggering itself.
-create or replace function public.is_member(p_space uuid)
-returns boolean language sql security definer stable set search_path = public as $$
+create or replace function plantshare.is_member(p_space uuid)
+returns boolean language sql security definer stable set search_path = plantshare as $$
   select exists (
-    select 1 from public.space_members
+    select 1 from plantshare.space_members
     where space_id = p_space and user_id = auth.uid()
   );
 $$;
 
-create or replace function public.is_owner(p_space uuid)
-returns boolean language sql security definer stable set search_path = public as $$
+create or replace function plantshare.is_owner(p_space uuid)
+returns boolean language sql security definer stable set search_path = plantshare as $$
   select exists (
-    select 1 from public.space_members
+    select 1 from plantshare.space_members
     where space_id = p_space and user_id = auth.uid() and role = 'owner'
   );
 $$;
 
-create or replace function public.shares_space_with(p_user uuid)
-returns boolean language sql security definer stable set search_path = public as $$
+create or replace function plantshare.shares_space_with(p_user uuid)
+returns boolean language sql security definer stable set search_path = plantshare as $$
   select exists (
     select 1
-    from public.space_members mine
-    join public.space_members theirs on theirs.space_id = mine.space_id
+    from plantshare.space_members mine
+    join plantshare.space_members theirs on theirs.space_id = mine.space_id
     where mine.user_id = auth.uid() and theirs.user_id = p_user
   );
 $$;
 
--- No 0/O or 1/I/L, so a code read aloud or typed from a screenshot works.
-create or replace function public.generate_invite_code()
+create or replace function plantshare.generate_invite_code()
 returns text language plpgsql as $$
 declare
   alphabet constant text := 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -185,7 +183,7 @@ begin
     for _ in 1..6 loop
       candidate := candidate || substr(alphabet, 1 + floor(random() * length(alphabet))::int, 1);
     end loop;
-    exit when not exists (select 1 from public.spaces where invite_code = candidate);
+    exit when not exists (select 1 from plantshare.spaces where invite_code = candidate);
   end loop;
   return candidate;
 end;
@@ -197,106 +195,104 @@ $$;
 do $$
 declare r record;
 begin
-  for r in select policyname, tablename from pg_policies where schemaname = 'public'
+  for r in select policyname, tablename from pg_policies where schemaname = 'plantshare'
   loop
-    execute format('drop policy if exists %I on public.%I', r.policyname, r.tablename);
+    execute format('drop policy if exists %I on plantshare.%I', r.policyname, r.tablename);
   end loop;
 end $$;
 
-alter table public.profiles           enable row level security;
-alter table public.spaces             enable row level security;
-alter table public.space_members      enable row level security;
-alter table public.plants             enable row level security;
-alter table public.watering_events    enable row level security;
-alter table public.push_subscriptions enable row level security;
-alter table public.notification_log   enable row level security;
+alter table plantshare.profiles           enable row level security;
+alter table plantshare.spaces             enable row level security;
+alter table plantshare.space_members      enable row level security;
+alter table plantshare.plants             enable row level security;
+alter table plantshare.watering_events    enable row level security;
+alter table plantshare.push_subscriptions enable row level security;
+alter table plantshare.notification_log   enable row level security;
 
 -- Yourself, plus anyone you share a space with, so the app can say
 -- "watered by Dana" rather than showing an id.
-create policy profiles_select on public.profiles for select
-  using (id = auth.uid() or public.shares_space_with(id));
-create policy profiles_update on public.profiles for update
+create policy profiles_select on plantshare.profiles for select
+  using (id = auth.uid() or plantshare.shares_space_with(id));
+create policy profiles_update on plantshare.profiles for update
   using (id = auth.uid()) with check (id = auth.uid());
 
-create policy spaces_select on public.spaces for select
-  using (public.is_member(id));
--- No insert policy: create_space() also makes the creator an owner.
-create policy spaces_update on public.spaces for update
-  using (public.is_owner(id)) with check (public.is_owner(id));
-create policy spaces_delete on public.spaces for delete
-  using (public.is_owner(id));
+create policy spaces_select on plantshare.spaces for select
+  using (plantshare.is_member(id));
+create policy spaces_update on plantshare.spaces for update
+  using (plantshare.is_owner(id)) with check (plantshare.is_owner(id));
+create policy spaces_delete on plantshare.spaces for delete
+  using (plantshare.is_owner(id));
 
-create policy space_members_select on public.space_members for select
-  using (public.is_member(space_id));
+create policy space_members_select on plantshare.space_members for select
+  using (plantshare.is_member(space_id));
 -- Also no insert policy: membership comes only from create_space() and
 -- join_space_by_code(). "user_id = auth.uid()" would let anyone who learned
 -- a space id join it. Delete: yourself always, others if owner.
-create policy space_members_delete on public.space_members for delete
-  using (user_id = auth.uid() or public.is_owner(space_id));
+create policy space_members_delete on plantshare.space_members for delete
+  using (user_id = auth.uid() or plantshare.is_owner(space_id));
 
-create policy plants_select on public.plants for select
-  using (public.is_member(space_id));
-create policy plants_insert on public.plants for insert
-  with check (public.is_member(space_id) and created_by = auth.uid());
-create policy plants_update on public.plants for update
-  using (public.is_member(space_id)) with check (public.is_member(space_id));
-create policy plants_delete on public.plants for delete
-  using (public.is_member(space_id));
+create policy plants_select on plantshare.plants for select
+  using (plantshare.is_member(space_id));
+create policy plants_insert on plantshare.plants for insert
+  with check (plantshare.is_member(space_id) and created_by = auth.uid());
+create policy plants_update on plantshare.plants for update
+  using (plantshare.is_member(space_id)) with check (plantshare.is_member(space_id));
+create policy plants_delete on plantshare.plants for delete
+  using (plantshare.is_member(space_id));
 
-create policy watering_events_select on public.watering_events for select
-  using (public.is_member(space_id));
-create policy watering_events_insert on public.watering_events for insert
-  with check (public.is_member(space_id) and user_id = auth.uid());
-create policy watering_events_delete on public.watering_events for delete
-  using (public.is_member(space_id));
+create policy watering_events_select on plantshare.watering_events for select
+  using (plantshare.is_member(space_id));
+create policy watering_events_insert on plantshare.watering_events for insert
+  with check (plantshare.is_member(space_id) and user_id = auth.uid());
+create policy watering_events_delete on plantshare.watering_events for delete
+  using (plantshare.is_member(space_id));
 
-create policy push_select on public.push_subscriptions for select using (user_id = auth.uid());
-create policy push_insert on public.push_subscriptions for insert with check (user_id = auth.uid());
-create policy push_update on public.push_subscriptions for update using (user_id = auth.uid());
-create policy push_delete on public.push_subscriptions for delete using (user_id = auth.uid());
+create policy push_select on plantshare.push_subscriptions for select using (user_id = auth.uid());
+create policy push_insert on plantshare.push_subscriptions for insert with check (user_id = auth.uid());
+create policy push_update on plantshare.push_subscriptions for update using (user_id = auth.uid());
+create policy push_delete on plantshare.push_subscriptions for delete using (user_id = auth.uid());
 
-create policy notification_log_select on public.notification_log for select using (user_id = auth.uid());
+create policy notification_log_select on plantshare.notification_log for select using (user_id = auth.uid());
 
 -- RPCs --
 
-create or replace function public.create_space(p_name text)
-returns public.spaces language plpgsql security definer set search_path = public as $$
+create or replace function plantshare.create_space(p_name text)
+returns plantshare.spaces language plpgsql security definer set search_path = plantshare as $$
 declare
-  new_space public.spaces;
+  new_space plantshare.spaces;
 begin
   if auth.uid() is null then
     raise exception 'not authenticated';
   end if;
 
-  insert into public.spaces (name, invite_code, created_by)
-  values (trim(p_name), public.generate_invite_code(), auth.uid())
+  insert into plantshare.spaces (name, invite_code, created_by)
+  values (trim(p_name), plantshare.generate_invite_code(), auth.uid())
   returning * into new_space;
 
-  insert into public.space_members (space_id, user_id, role)
+  insert into plantshare.space_members (space_id, user_id, role)
   values (new_space.id, auth.uid(), 'owner');
 
   return new_space;
 end;
 $$;
 
--- SECURITY DEFINER: the joiner cannot read the space yet - the point.
-create or replace function public.join_space_by_code(p_code text)
-returns public.spaces language plpgsql security definer set search_path = public as $$
+create or replace function plantshare.join_space_by_code(p_code text)
+returns plantshare.spaces language plpgsql security definer set search_path = plantshare as $$
 declare
-  target public.spaces;
+  target plantshare.spaces;
 begin
   if auth.uid() is null then
     raise exception 'not authenticated';
   end if;
 
-  select * into target from public.spaces
+  select * into target from plantshare.spaces
   where invite_code = upper(trim(p_code));
 
   if target.id is null then
     raise exception 'no_such_code' using errcode = 'P0002';
   end if;
 
-  insert into public.space_members (space_id, user_id, role)
+  insert into plantshare.space_members (space_id, user_id, role)
   values (target.id, auth.uid(), 'member')
   on conflict (space_id, user_id) do nothing;
 
@@ -304,22 +300,21 @@ begin
 end;
 $$;
 
--- Two writes that must not drift, so one function, not two round trips.
-create or replace function public.mark_watered(p_plant uuid, p_today date)
-returns public.watering_events language plpgsql security definer set search_path = public as $$
+create or replace function plantshare.mark_watered(p_plant uuid, p_today date)
+returns plantshare.watering_events language plpgsql security definer set search_path = plantshare as $$
 declare
-  target public.plants;
-  event  public.watering_events;
+  target plantshare.plants;
+  event  plantshare.watering_events;
 begin
-  select * into target from public.plants where id = p_plant;
+  select * into target from plantshare.plants where id = p_plant;
   if target.id is null then
     raise exception 'no_such_plant' using errcode = 'P0002';
   end if;
-  if not public.is_member(target.space_id) then
+  if not plantshare.is_member(target.space_id) then
     raise exception 'not_a_member' using errcode = '42501';
   end if;
 
-  insert into public.watering_events (
+  insert into plantshare.watering_events (
     plant_id, space_id, user_id, watered_on,
     prev_next_due_date, prev_last_watered_date, prev_last_watered_by
   )
@@ -330,7 +325,7 @@ begin
   returning * into event;
 
   -- From the day it was actually watered, so a late plant does not stay behind.
-  update public.plants
+  update plantshare.plants
   set next_due_date     = p_today + target.period_days,
       last_watered_date = p_today,
       last_watered_by   = auth.uid()
@@ -342,23 +337,23 @@ $$;
 
 -- Only whoever watered can undo - anyone may water early, so this guards
 -- identity, not timing.
-drop function if exists public.undo_watering(uuid);
-create or replace function public.undo_last_watering(p_plant uuid)
-returns public.plants language plpgsql security definer set search_path = public as $$
+drop function if exists plantshare.undo_watering(uuid);
+create or replace function plantshare.undo_last_watering(p_plant uuid)
+returns plantshare.plants language plpgsql security definer set search_path = plantshare as $$
 declare
-  target public.plants;
-  event  public.watering_events;
-  result public.plants;
+  target plantshare.plants;
+  event  plantshare.watering_events;
+  result plantshare.plants;
 begin
-  select * into target from public.plants where id = p_plant;
+  select * into target from plantshare.plants where id = p_plant;
   if target.id is null then
     raise exception 'no_such_plant' using errcode = 'P0002';
   end if;
-  if not public.is_member(target.space_id) then
+  if not plantshare.is_member(target.space_id) then
     raise exception 'not_a_member' using errcode = '42501';
   end if;
 
-  select * into event from public.watering_events
+  select * into event from plantshare.watering_events
   where plant_id = p_plant order by created_at desc limit 1;
   if event.id is null then
     raise exception 'nothing_to_undo' using errcode = 'P0002';
@@ -367,53 +362,52 @@ begin
     raise exception 'not_your_watering' using errcode = '42501';
   end if;
 
-  update public.plants
+  update plantshare.plants
   set next_due_date     = event.prev_next_due_date,
       last_watered_date = event.prev_last_watered_date,
       last_watered_by   = event.prev_last_watered_by
   where id = event.plant_id
   returning * into result;
 
-  delete from public.watering_events where id = event.id;
+  delete from plantshare.watering_events where id = event.id;
   return result;
 end;
 $$;
 
 -- The last owner cannot walk out and orphan the space.
-create or replace function public.leave_space(p_space uuid)
-returns void language plpgsql security definer set search_path = public as $$
+create or replace function plantshare.leave_space(p_space uuid)
+returns void language plpgsql security definer set search_path = plantshare as $$
 begin
-  if public.is_owner(p_space)
-     and (select count(*) from public.space_members where space_id = p_space and role = 'owner') = 1
-     and (select count(*) from public.space_members where space_id = p_space) > 1
+  if plantshare.is_owner(p_space)
+     and (select count(*) from plantshare.space_members where space_id = p_space and role = 'owner') = 1
+     and (select count(*) from plantshare.space_members where space_id = p_space) > 1
   then
     raise exception 'last_owner' using errcode = 'P0001';
   end if;
 
-  delete from public.space_members where space_id = p_space and user_id = auth.uid();
+  delete from plantshare.space_members where space_id = p_space and user_id = auth.uid();
 
   -- An empty space is nobody's, so it goes.
-  if not exists (select 1 from public.space_members where space_id = p_space) then
-    delete from public.spaces where id = p_space;
+  if not exists (select 1 from plantshare.space_members where space_id = p_space) then
+    delete from plantshare.spaces where id = p_space;
   end if;
 end;
 $$;
 
--- Live updates, so a plant someone else waters greys out while you watch.
 do $$
 begin
   if not exists (
     select 1 from pg_publication_tables
-    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'plants'
+    where pubname = 'supabase_realtime' and schemaname = 'plantshare' and tablename = 'plants'
   ) then
-    alter publication supabase_realtime add table public.plants;
+    alter publication supabase_realtime add table plantshare.plants;
   end if;
 end $$;
 
 -- הגדרות השרת --
 -- RLS בלי מדיניות = חסום לכולם חוץ מ-service_role; לכן אין סודות ב-Supabase.
 
-create table if not exists public.app_config (
+create table if not exists plantshare.app_config (
   id                boolean primary key default true check (id),
   vapid_public_key  text not null,
   vapid_private_key text not null,
@@ -424,18 +418,18 @@ create table if not exists public.app_config (
     default replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '')
 );
 
-alter table public.app_config enable row level security;
+alter table plantshare.app_config enable row level security;
 -- ללא מדיניות = חסום לכולם; service_role עוקף RLS וכן קורא.
-revoke all on public.app_config from anon, authenticated;
+revoke all on plantshare.app_config from anon, authenticated;
 
-insert into public.app_config (id, vapid_public_key, vapid_private_key, vapid_subject, functions_url)
+insert into plantshare.app_config (id, vapid_public_key, vapid_private_key, vapid_subject, functions_url)
 select
   true,
   'BDJiNMmEeXk34oQvE1RjsVvlHjeJxM1aBKBhAwj2Idk9ePLvmCqcHT27VIkVh_roDRlE2JTgHCiffN4joeAXqjc',
   v.vapid_private_key,
   'mailto:' || v.contact_email,
-  'https://' || v.project_ref || '.supabase.co/functions/v1/send-reminders'
-from private_setup.values() v
+  'https://' || v.project_ref || '.supabase.co/functions/v1/plantshare-send-reminders'
+from plantshare_private.values() v
 -- שני חצאי המפתח חייבים להתעדכן יחד: זוג לא תואם = כל ההתראות נדחות.
 on conflict (id) do update set
   vapid_public_key  = excluded.vapid_public_key,
@@ -446,9 +440,9 @@ on conflict (id) do update set
 -- אם הערכים למעלה נשארו ריקים, עדיף להיכשל כאן מאשר בעוד שבוע.
 do $$
 declare
-  cfg public.app_config;
+  cfg plantshare.app_config;
 begin
-  select * into cfg from public.app_config;
+  select * into cfg from plantshare.app_config;
   if cfg.vapid_private_key like 'PASTE_%' or cfg.functions_url like '%PASTE_%' then
     raise exception using
       message = 'חסרים ערכים בבלוק ההגדרות בראש הקובץ',
@@ -499,10 +493,10 @@ select cron.schedule(
   '*/15 * * * *',
   $job$
     select net.http_post(
-      url := (select functions_url from public.app_config),
+      url := (select functions_url from plantshare.app_config),
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'x-cron-secret', (select cron_secret from public.app_config)
+        'x-cron-secret', (select cron_secret from plantshare.app_config)
       ),
       body := '{}'::jsonb,
       timeout_milliseconds := 30000
@@ -510,7 +504,6 @@ select cron.schedule(
   $job$
 );
 
--- לבדיקה: select jobname, schedule, active from cron.job;
 
 do $$
 begin

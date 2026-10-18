@@ -43,7 +43,8 @@ Deno.serve(async (request) => {
   const admin = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    { auth: { persistSession: false } },
+    // PlantShare's tables live in the "plantshare" schema of a shared project.
+    { auth: { persistSession: false }, db: { schema: 'plantshare' } },
   )
 
   const config = await loadConfig(admin)
